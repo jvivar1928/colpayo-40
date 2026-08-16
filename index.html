@@ -219,12 +219,19 @@
 
   <div class="panel" id="panel-gastos">
     <div class="card editor-only">
+      <div id="g-form-title" style="display:none; font-size:13px; font-weight:700; color:#B5542F; margin-bottom:10px;"></div>
       <div class="grid2">
         <div class="field"><label>Fecha</label><input type="date" id="g-fecha" /></div>
-        <div class="field" style="grid-column: span 2;"><label>Concepto</label><input type="text" id="g-concepto" placeholder="Ej: limpieza, tintorería, insumos" /></div>
+        <div class="field" style="grid-column: span 2;"><label>Notas (opcional)</label><input type="text" id="g-concepto" placeholder="Ej: limpieza, tintorería, insumos, o cualquier comentario" /></div>
         <div class="field"><label>Monto</label><div class="amount-field"><span class="currency">$</span><input type="text" inputmode="decimal" id="g-monto" placeholder="0" /></div></div>
+        <div class="field" style="grid-column: span 2;">
+          <label>Categoría (opcional)</label>
+          <select id="g-categoria"></select>
+          <input type="text" id="g-categoria-nueva" placeholder="Nombre de la categoría nueva" style="display:none; margin-top:6px;" />
+        </div>
       </div>
       <div class="row-actions">
+        <button type="button" id="g-cancel-edit" style="display:none;">Cancelar</button>
         <button class="primary" id="g-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar gasto</button>
       </div>
       <div class="status" id="g-status"></div>
@@ -364,6 +371,7 @@ const today = new Date();
 let calState = { year: today.getFullYear(), month: today.getMonth() };
 
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function todayISO() { return today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate()); }
 function formatFecha(dateStr) {
   if (!dateStr) return '?';
   const p = dateStr.split('-');
@@ -469,19 +477,43 @@ function populateGastoMonths() {
   if (arr.includes(prev)) sel.value = prev;
 }
 
+const CATEGORIAS_BASE = ['Limpieza', 'Mantenimiento', 'Insumos', 'Servicios'];
+
+function populateCategorias() {
+  const sel = document.getElementById('g-categoria');
+  if (sel.value === '__nueva__') return;
+  const prev = sel.value;
+  const set = new Set(CATEGORIAS_BASE);
+  gastos.forEach(g => { if (g.categoria) set.add(g.categoria); });
+  set.delete('Otro');
+  const arr = [...set].sort();
+  sel.innerHTML = '<option value="">Sin categoría</option>'
+    + arr.map(c => '<option value="' + c + '">' + c + '</option>').join('')
+    + '<option value="Otro">Otro</option>'
+    + '<option value="__nueva__">+ Nueva categoría…</option>';
+  sel.value = ['', ...arr, 'Otro'].includes(prev) ? prev : '';
+}
+
 function renderGastos() {
   populateGastoMonths();
+  populateCategorias();
   const list = document.getElementById('g-list');
   const mes = document.getElementById('g-mes').value;
   const delMes = gastos.filter(g => monthKey(g.fecha) === mes);
   if (!delMes.length) { list.innerHTML = '<div class="empty">' + (gastos.length ? 'Sin gastos ese mes.' : 'Todavía no cargaste ningún gasto.') + '</div>'; return; }
   const sorted = [...delMes].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-  list.innerHTML = sorted.map(g => '<div class="list-item gas"><div class="li-top"><div><div class="li-title">' + (g.concepto || 'Sin concepto') + '</div><div class="li-sub">' + formatFecha(g.fecha) + '</div></div><button class="del" data-id="' + g.id + '" data-kind="g" aria-label="Eliminar gasto"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div><div class="li-nums"><span>Monto: <b>' + fmt(g.monto) + '</b></span></div></div>').join('');
+  list.innerHTML = sorted.map(g => {
+    const catChip = g.categoria ? '<span class="cal-chip" style="background:#F1E9D6;color:#766B5A;">' + g.categoria + '</span>' : '';
+    const notaTxt = g.concepto ? '<span class="li-title">' + g.concepto + '</span>' : '';
+    const headerHtml = (catChip || notaTxt) ? '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:2px;">' + catChip + notaTxt + '</div>' : '';
+    return '<div class="list-item gas"><div class="li-top"><div>' + headerHtml + '<div class="li-sub">' + formatFecha(g.fecha) + '</div></div><div style="display:flex; gap:2px;"><button class="edit-btn" data-id="' + g.id + '" aria-label="Editar gasto"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="del" data-id="' + g.id + '" data-kind="g" aria-label="Eliminar gasto"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div></div><div class="li-nums"><span>Monto: <b>' + fmt(g.monto) + '</b></span></div></div>';
+  }).join('');
 }
 
 function monthKey(dateStr) { return (dateStr || '').slice(0, 7); }
 function mesEstaCerrado(mes) { return mesesCerrados.some(mc => mc.mes === mes); }
 function getMesCerradoInfo(mes) { return mesesCerrados.find(mc => mc.mes === mes); }
+
 
 function populateMonths() {
   const sel = document.getElementById('s-mes');
@@ -700,14 +732,46 @@ function startEditReserva(r) {
   title.style.display = 'block';
   document.getElementById('r-huesped').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+let editingGastoId = null;
+
 function resetGastoForm() {
-  ['g-fecha', 'g-concepto', 'g-monto'].forEach(id => {
+  ['g-concepto', 'g-monto'].forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
     el.classList.remove('invalid');
   });
+  const elFecha = document.getElementById('g-fecha');
+  elFecha.value = todayISO();
+  elFecha.classList.remove('invalid');
+  document.getElementById('g-categoria').value = '';
+  const nuevaInput = document.getElementById('g-categoria-nueva');
+  nuevaInput.value = '';
+  nuevaInput.style.display = 'none';
   clearStatusNow(document.getElementById('g-status'));
+  editingGastoId = null;
+  document.getElementById('g-add').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar gasto';
+  document.getElementById('g-cancel-edit').style.display = 'none';
+  document.getElementById('g-form-title').style.display = 'none';
 }
+
+function startEditGasto(g) {
+  editingGastoId = g.id;
+  document.getElementById('g-fecha').value = g.fecha || '';
+  document.getElementById('g-concepto').value = g.concepto || '';
+  document.getElementById('g-monto').value = g.monto || '';
+  document.getElementById('g-categoria').value = g.categoria || '';
+  populateCategorias();
+  document.getElementById('g-categoria').value = g.categoria || '';
+  document.getElementById('g-categoria-nueva').style.display = 'none';
+  clearStatusNow(document.getElementById('g-status'));
+  document.getElementById('g-add').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>Guardar cambios';
+  document.getElementById('g-cancel-edit').style.display = 'inline-flex';
+  const title = document.getElementById('g-form-title');
+  title.textContent = 'Editando el gasto "' + (g.concepto || 'sin notas') + '"';
+  title.style.display = 'block';
+  document.getElementById('g-concepto').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function resetNotaForm() {
   ['n-fecha', 'n-texto'].forEach(id => { document.getElementById(id).value = ''; });
   clearStatusNow(document.getElementById('n-status'));
@@ -826,20 +890,52 @@ document.getElementById('g-add').addEventListener('click', async () => {
   const fecha = document.getElementById('g-fecha').value;
   const concepto = document.getElementById('g-concepto').value.trim();
   const monto = parseFloat(document.getElementById('g-monto').value) || 0;
-  if (!fecha || !concepto) { setStatus(status, 'Falta fecha o concepto.', 'err'); return; }
+  const selCategoria = document.getElementById('g-categoria');
+  const nuevaInput = document.getElementById('g-categoria-nueva');
+  let categoria = selCategoria.value;
+  if (!fecha) { setStatus(status, 'Falta la fecha.', 'err'); return; }
+  if (categoria === '__nueva__') {
+    categoria = nuevaInput.value.trim();
+    if (!categoria) { setStatus(status, 'Escribí un nombre para la nueva categoría.', 'err'); nuevaInput.focus(); return; }
+  }
   if (mesEstaCerrado(monthKey(fecha))) {
     setStatus(status, 'El mes de ' + formatMes(monthKey(fecha)) + ' ya está cerrado. No se pueden agregar más gastos ahí.', 'err');
     return;
   }
-  document.getElementById('g-fecha').value = ''; document.getElementById('g-concepto').value = ''; document.getElementById('g-monto').value = '';
+  const idEnEdicion = editingGastoId;
+  resetGastoForm();
   setStatus(status, 'Guardando...');
   try {
-    await addDoc(gastosCol, { fecha, concepto, monto });
-    setStatus(status, 'Gasto guardado.', 'ok');
+    if (idEnEdicion) {
+      await updateDoc(doc(db, 'gastos', idEnEdicion), { fecha, concepto, monto, categoria });
+      setStatus(status, 'Gasto actualizado.', 'ok');
+    } else {
+      await addDoc(gastosCol, { fecha, concepto, monto, categoria });
+      setStatus(status, 'Gasto guardado.', 'ok');
+    }
   } catch (e) {
     setStatus(status, 'No se pudo guardar. Probá de nuevo.', 'err');
   }
 });
+document.getElementById('g-cancel-edit').addEventListener('click', () => { resetGastoForm(); });
+document.getElementById('g-categoria').addEventListener('change', function () {
+  const nuevaInput = document.getElementById('g-categoria-nueva');
+  if (this.value === '__nueva__') {
+    nuevaInput.style.display = 'block';
+    nuevaInput.focus();
+  } else {
+    nuevaInput.style.display = 'none';
+    nuevaInput.value = '';
+  }
+});
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.edit-btn');
+  if (!btn) return;
+  if (currentRole !== 'editor') return;
+  const g = gastos.find(x => x.id === btn.dataset.id);
+  if (g) startEditGasto(g);
+});
+
 
 document.getElementById('conv-add').addEventListener('click', async () => {
   if (currentRole !== 'editor') return;
@@ -1039,6 +1135,8 @@ function attachListeners() {
     renderRendicion();
   });
 }
+
+document.getElementById('g-fecha').value = todayISO();
 
 const LOGIN_PHOTOS = ['images/foto-living.jpg', 'images/foto-cocina.jpg', 'images/foto-hall.jpg', 'images/foto-dormitorio.jpg', 'images/foto-living-2.jpg', 'images/foto-cocina-2.jpg', 'images/foto-dormitorio-2.jpg'];
 let loginBgTimer = null;
