@@ -288,8 +288,14 @@
     <div class="card" id="g-list"><div class="empty">Cargando gastos...</div></div>
     <div class="card">
       <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Ver por categoría</div>
-      <div style="font-size:12px;color:#766B5A;margin-bottom:10px;">Cuánto gastaste en algo puntual, en toda la historia.</div>
+      <div style="font-size:12px;color:#766B5A;margin-bottom:10px;">Cuánto gastaste en una categoría: todo, por mes o por año.</div>
       <select id="gf-categoria"></select>
+      <div style="display:flex; gap:6px; margin:10px 0;">
+        <button type="button" id="gf-modo-todo" class="periodo-toggle active">Todo</button>
+        <button type="button" id="gf-modo-mes" class="periodo-toggle">Mes</button>
+        <button type="button" id="gf-modo-anio" class="periodo-toggle">Año</button>
+      </div>
+      <select id="gf-periodo" style="display:none;"></select>
       <div id="gf-subtotal" style="margin-top:10px;"></div>
       <div id="gf-list"><div class="empty">Elegí una categoría para ver el detalle y el subtotal.</div></div>
     </div>
@@ -602,6 +608,8 @@ function renderGastos() {
   }).join('');
 }
 
+let gfModo = 'todo';
+
 function populateFiltroCategorias() {
   const sel = document.getElementById('gf-categoria');
   const set = new Set();
@@ -616,9 +624,25 @@ function populateFiltroCategorias() {
   if ([...arr, '__sin__', ''].includes(prev)) sel.value = prev;
 }
 
+function populateFiltroPeriodos() {
+  const sel = document.getElementById('gf-periodo');
+  if (gfModo === 'todo') { sel.style.display = 'none'; return; }
+  sel.style.display = '';
+  const set = new Set();
+  gastos.forEach(g => { if (g.fecha) set.add(gfModo === 'mes' ? monthKey(g.fecha) : g.fecha.slice(0, 4)); });
+  const arr = [...set].sort().reverse();
+  const prev = sel.value;
+  sel.innerHTML = arr.length
+    ? arr.map(v => '<option value="' + v + '">' + (gfModo === 'mes' ? formatMes(v) : v) + '</option>').join('')
+    : '<option value="">Sin datos</option>';
+  if (arr.includes(prev)) sel.value = prev;
+}
+
 function renderGastosFiltro() {
   populateFiltroCategorias();
+  populateFiltroPeriodos();
   const cat = document.getElementById('gf-categoria').value;
+  const periodo = document.getElementById('gf-periodo').value;
   const sub = document.getElementById('gf-subtotal');
   const list = document.getElementById('gf-list');
   if (!cat) {
@@ -626,9 +650,18 @@ function renderGastosFiltro() {
     list.innerHTML = '<div class="empty">Elegí una categoría para ver el detalle y el subtotal.</div>';
     return;
   }
-  const filtrados = gastos.filter(g => cat === '__sin__' ? (!g.categoria || g.categoria === 'Otro') : g.categoria === cat);
+  const filtrados = gastos.filter(g => {
+    const catOk = cat === '__sin__' ? (!g.categoria || g.categoria === 'Otro') : g.categoria === cat;
+    if (!catOk) return false;
+    if (gfModo === 'mes') return monthKey(g.fecha) === periodo;
+    if (gfModo === 'anio') return (g.fecha || '').slice(0, 4) === periodo;
+    return true;
+  });
   const total = filtrados.reduce((s, g) => s + (g.monto || 0), 0);
-  sub.innerHTML = '<div class="co-top"><span>Subtotal · ' + filtrados.length + ' gasto' + (filtrados.length === 1 ? '' : 's') + '</span><b>' + fmt(total) + '</b></div>';
+  let periodoTxt = '';
+  if (gfModo === 'mes' && periodo) periodoTxt = ' · ' + formatMes(periodo);
+  else if (gfModo === 'anio' && periodo) periodoTxt = ' · ' + periodo;
+  sub.innerHTML = '<div class="co-top"><span>Subtotal · ' + filtrados.length + ' gasto' + (filtrados.length === 1 ? '' : 's') + periodoTxt + '</span><b>' + fmt(total) + '</b></div>';
   if (!filtrados.length) { list.innerHTML = '<div class="empty">Sin gastos en esta categoría.</div>'; return; }
   const sorted = [...filtrados].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   list.innerHTML = sorted.map(g => {
@@ -755,6 +788,23 @@ function textoNoches(n) {
   return n + ' noche' + (n === 1 ? '' : 's') + ' reservada' + (n === 1 ? '' : 's') + ' este mes';
 }
 
+function diasDelMes(mesKey) {
+  const p = (mesKey || '').split('-');
+  if (p.length !== 2) return 30;
+  return new Date(+p[0], +p[1], 0).getDate();
+}
+function diasEnAnio(anio) {
+  return ((anio % 4 === 0 && anio % 100 !== 0) || anio % 400 === 0) ? 366 : 365;
+}
+function diasTranscurridosAnio(anio) {
+  const hoyAnio = today.getFullYear();
+  if (anio < hoyAnio) return diasEnAnio(anio);
+  if (anio > hoyAnio) return 1;
+  const inicio = new Date(hoyAnio, 0, 0);
+  const ahora = new Date(hoyAnio, today.getMonth(), today.getDate());
+  return Math.max(1, Math.round((ahora - inicio) / 86400000));
+}
+
 function populateCosteoMonths() {
   const sel = document.getElementById('co-mes');
   const months = new Set();
@@ -872,14 +922,24 @@ function renderCosteo() {
       '<span class="co-val">' + fmt(totalFijo) + '</span>' +
     '</div>';
 
+  // Mantenimiento anualizado: total del año ÷ días transcurridos del año
+  const anioSel = parseInt(mes.slice(0, 4), 10);
+  const totalMantAnio = gastos
+    .filter(g => g.categoria === 'Mantenimiento' && (g.fecha || '').slice(0, 4) === String(anioSel))
+    .reduce((s, g) => s + (g.monto || 0), 0);
+  const diasTrans = diasTranscurridosAnio(anioSel);
+  const mantPorDia = diasTrans ? totalMantAnio / diasTrans : 0;
+  const mantMes = mantPorDia * diasDelMes(mes);
+
   // Costo por noche: costos del mes ÷ 0,7 (nuestra comisión 30%) ÷ noches reservadas
-  const costosMes = totalMes + totalFijo;
+  const costosMes = totalMes + totalFijo + mantPorDia;
   const ingresoNec = costosMes / 0.7;
   const precioNocheARS = noches ? ingresoNec / noches : null;
   const precioNocheUSD = (precioNocheARS !== null && usdRate) ? precioNocheARS / usdRate : null;
   boxN.innerHTML =
     '<div class="co-frow"><span class="co-cat">Costos de estadía</span><span class="co-val">' + fmt(totalMes) + '</span></div>' +
     '<div class="co-frow"><span class="co-cat">Costos mensuales</span><span class="co-val">' + fmt(totalFijo) + '</span></div>' +
+    '<div class="co-frow"><span class="co-cat">Mantenimiento (por día)</span><span class="co-val">' + fmt(mantPorDia) + '</span></div>' +
     '<div class="co-frow co-ftotal"><span class="co-cat">Total a cubrir</span><span class="co-val">' + fmt(costosMes) + '</span></div>' +
     '<div class="co-frow"><span class="co-cat">Ingreso necesario (÷ 0,7)</span><span class="co-val">' + fmt(ingresoNec) + '</span></div>' +
     '<div class="co-frow"><span class="co-cat">Noches reservadas</span><span class="co-val">' + noches + '</span></div>' +
@@ -889,18 +949,19 @@ function renderCosteo() {
     '</div>';
 
   // Resultado del mes: recaudado por Lucy − costos de estadía − costos mensuales
-  const resultado = recaudadoLucy - totalCats - totalFijo;
+  const resultado = recaudadoLucy - totalCats - totalFijo - mantMes;
   boxR.innerHTML =
     '<div class="co-frow"><span class="co-cat">Recaudado por Lucy</span><span class="co-val pos">' + fmt(recaudadoLucy) + '</span></div>' +
     '<div class="co-frow"><span class="co-cat">− Costos por estadía</span><span class="co-val neg">−' + fmt(totalCats) + '</span></div>' +
     '<div class="co-frow"><span class="co-cat">− Costos mensuales</span><span class="co-val neg">−' + fmt(totalFijo) + '</span></div>' +
+    '<div class="co-frow"><span class="co-cat">− Mantenimiento (anualizado)</span><span class="co-val neg">−' + fmt(mantMes) + '</span></div>' +
     '<div class="co-result">' +
       '<div class="co-result-row">' +
         '<span>Resultado del mes</span>' +
         '<b style="color:' + (resultado < 0 ? '#791F1F' : '#3F5230') + ';">' + fmt(resultado) + '</b>' +
       '</div>' +
     '</div>' +
-    '<div class="co-nota">Acá el costo de estadía va completo (gasto real), porque la limpieza que cobrás ya está sumada en lo recaudado.</div>';
+    '<div class="co-nota">El costo de estadía va completo (gasto real), porque la limpieza que cobrás ya está sumada en lo recaudado. El mantenimiento es el anualizado (promedio diario del año × días del mes), no el gasto real del mes.</div>';
 }
 
 const fmtUSD = (n) => {
@@ -1376,6 +1437,16 @@ async function fetchUsdRate() {
 fetchUsdRate();
 setInterval(fetchUsdRate, 600000);
 document.getElementById('gf-categoria').addEventListener('change', renderGastosFiltro);
+document.getElementById('gf-periodo').addEventListener('change', renderGastosFiltro);
+['todo', 'mes', 'anio'].forEach(mo => {
+  document.getElementById('gf-modo-' + mo).addEventListener('click', () => {
+    if (gfModo === mo) return;
+    gfModo = mo;
+    ['todo', 'mes', 'anio'].forEach(x => document.getElementById('gf-modo-' + x).classList.toggle('active', x === mo));
+    document.getElementById('gf-periodo').value = '';
+    renderGastosFiltro();
+  });
+});
 document.getElementById('export-btn').addEventListener('click', () => {
   const status = document.getElementById('export-status');
   if (typeof XLSX === 'undefined') {
