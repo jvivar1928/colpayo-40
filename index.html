@@ -155,6 +155,14 @@
   .co-desglose-item { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 12.5px; color: #766B5A; border-top: 0.5px dashed #EADFC8; }
   .co-desglose-item:first-child { border-top: none; }
   .co-desglose-item span:last-child { font-weight: 600; color: #3A2E22; white-space: nowrap; }
+  .cal-cell.airbnb { background: #FBF3EE; box-shadow: inset 0 0 0 1.5px #D9A58C; }
+  .cal-cell.airbnb .cal-guest { color: #8F3F22; }
+  .cal-tres { display: block; max-width: 100%; margin-top: 3px; font-size: 9px; line-height: 1.15; font-weight: 800; letter-spacing: 0.02em; background: #B5542F; color: #ffffff; border-radius: 4px; padding: 1px 3px; text-align: center; }
+  @media (max-width: 520px) { .cal-tres { font-size: 7.5px; letter-spacing: 0; padding: 1px 1px; } }
+  .ab-chip-ok { background: #E7EEDD; color: #3F5230; }
+  .ab-chip-falta { background: #F6E3DA; color: #8F3F22; }
+  .check-tres { display: flex; align-items: center; gap: 8px; height: 36px; font-size: 14px; color: #3A2E22; margin: 0; cursor: pointer; }
+  .check-tres input { width: 18px; height: 18px; accent-color: #B5542F; margin: 0; }
 </style>
 </head>
 <body>
@@ -218,6 +226,19 @@
       <div class="cal-grid" id="cal-grid"></div>
       <div class="cal-legend" id="cal-legend"></div>
     </div>
+    <div class="card" id="ab-card" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+        <div style="font-size:14px; font-weight:600;">Reservas de Airbnb</div>
+        <div class="co-nota" id="ab-estado" style="margin-top:0;"></div>
+      </div>
+      <div id="ab-list"></div>
+      <details class="editor-only" id="ab-config" style="margin-top:12px;">
+        <summary style="font-size:12.5px; color:#766B5A; cursor:pointer;">Conexión con Airbnb</summary>
+        <div class="field" style="margin-top:8px;"><label>URL del puente (Apps Script)</label><input type="text" id="ab-url" placeholder="https://script.google.com/macros/s/…/exec" /></div>
+        <div class="row-actions"><button class="primary" id="ab-guardar">Guardar</button></div>
+        <div class="status" id="ab-status"></div>
+      </details>
+    </div>
     <div class="card">
       <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Notas del calendario</div>
       <div class="editor-only">
@@ -244,6 +265,7 @@
         <div class="field"><label>Pagó el huésped</label><div class="amount-field"><span class="currency">$</span><input type="text" inputmode="decimal" id="r-pago" placeholder="0" /></div></div>
         <div class="field"><label>Limpieza</label><div class="amount-field"><span class="currency">$</span><input type="text" inputmode="decimal" id="r-limpieza" placeholder="0" /></div></div>
         <div class="field"><label>Comisión</label><div class="static-field">30%</div></div>
+        <div class="field"><label>Preparación</label><label class="check-tres"><input type="checkbox" id="r-tres" /> 3 huéspedes</label></div>
       </div>
       <div class="row-actions">
         <button type="button" id="r-cancel-edit" style="display:none;">Cancelar</button>
@@ -495,13 +517,28 @@ document.querySelectorAll('.amount-field input').forEach(inp => {
   const allowNegative = inp.id === 'g-monto';
   inp.addEventListener('input', () => {
     const neg = allowNegative && inp.value.trim().startsWith('-');
-    let v = inp.value.replace(/[^0-9.]/g, '');
-    const parts = v.split('.');
-    if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+    // La coma es el decimal. Si ya hay coma, los puntos se toman como miles y se descartan;
+    // si no, el punto tipeado (teclado numérico) se convierte en coma.
+    let raw = inp.value;
+    raw = raw.includes(',') ? raw.replace(/\./g, '') : raw.replace(/\./g, ',');
+    let v = raw.replace(/[^0-9,]/g, '');
+    const parts = v.split(',');
+    if (parts.length > 2) v = parts[0] + ',' + parts.slice(1).join('');
     inp.value = (neg ? '-' : '') + v;
     if (v) inp.classList.remove('invalid');
   });
 });
+
+function parseMonto(str) {
+  let s = String(str == null ? '' : str).trim();
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+function montoAInput(n) {
+  if (n === null || n === undefined || n === '' || isNaN(n)) return '';
+  return String(Math.round(n * 100) / 100).replace('.', ',');
+}
 
 function calcReserva(r) {
   const base = (r.pago || 0) - (r.limpieza || 0);
@@ -539,12 +576,13 @@ function populateReservaPeriodos() {
   reservas.forEach(r => {
     getMesesDeReserva(r).forEach(mk => set.add(rModoPeriodo === 'mes' ? mk : mk.slice(0, 4)));
   });
+  // El período actual siempre está en la lista y es el que se muestra por defecto.
+  const actual = rModoPeriodo === 'mes' ? todayISO().slice(0, 7) : todayISO().slice(0, 4);
+  set.add(actual);
   const arr = [...set].sort().reverse();
   const prev = sel.value;
-  sel.innerHTML = arr.length
-    ? arr.map(v => '<option value="' + v + '">' + (rModoPeriodo === 'mes' ? formatMes(v) : v) + '</option>').join('')
-    : '<option value="">Sin reservas todavía</option>';
-  if (arr.includes(prev)) sel.value = prev;
+  sel.innerHTML = arr.map(v => '<option value="' + v + '">' + (rModoPeriodo === 'mes' ? formatMes(v) : v) + '</option>').join('');
+  sel.value = arr.includes(prev) ? prev : actual;
 }
 
 function renderReservas() {
@@ -676,7 +714,7 @@ function exportarExcel() {
     const ws = rows.length ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet([['(sin datos)']]);
     XLSX.utils.book_append_sheet(wb, ws, name);
   };
-  addSheet('Reservas', reservas.map(r => ({ Huesped: r.huesped || '', Entrada: r.entrada || '', Salida: r.salida || '', Pago: r.pago || 0, Limpieza: r.limpieza || 0, ComisionPct: r.comisionPct || 0 })));
+  addSheet('Reservas', reservas.map(r => ({ Huesped: r.huesped || '', Entrada: r.entrada || '', Salida: r.salida || '', Pago: r.pago || 0, Limpieza: r.limpieza || 0, ComisionPct: r.comisionPct || 0, TresHuespedes: r.tresHuespedes ? 'Sí' : '' })));
   addSheet('Gastos', gastos.map(g => ({ Fecha: g.fecha || '', Nota: g.concepto || '', Categoria: g.categoria || '', Monto: g.monto || 0 })));
   addSheet('Notas', notas.map(n => ({ Fecha: n.fecha || '', Texto: n.texto || '' })));
   addSheet('ConversionesUSD', conversionesUSD.map(c => ({ Fecha: c.fecha || '', Pesos: c.pesos || 0, Dolares: c.dolares || 0 })));
@@ -972,6 +1010,19 @@ const fmtUSD = (n) => {
   return (neg ? '-US$' : 'US$') + n.toLocaleString('es-AR', opts);
 };
 
+let ultimoSaldoPublicado = null;
+function publicarSaldo(saldoARS) {
+  if (currentRole !== 'editor') return;
+  const val = Math.round((saldoARS || 0) * 100) / 100;
+  if (val === ultimoSaldoPublicado) return;
+  ultimoSaldoPublicado = val;
+  setDoc(doc(db, 'publico', 'saldo'), {
+    saldoNum: val,
+    saldo: String(val),
+    actualizadoEl: new Date().toISOString()
+  }, { merge: true }).catch(() => {});
+}
+
 function renderRendicion() {
   let generadoARS = 0;
   reservas.forEach(r => {
@@ -987,6 +1038,7 @@ function renderRendicion() {
     dolaresConvertidos += c.dolares || 0;
   });
   const saldoARS = generadoARS - pesosConvertidos;
+  publicarSaldo(saldoARS);
 
   let dolaresRendidos = 0;
   rendicionesUSD.forEach(u => { dolaresRendidos += u.dolares || 0; });
@@ -1040,6 +1092,90 @@ function renderRendicion() {
   }
 }
 
+// ---------- Airbnb (vía puente de Apps Script) ----------
+// La app solo usa: fechas de entrada/salida, nombre del titular y cantidad de huéspedes.
+let airbnbUrl = null;
+let airbnbEventos = [];
+let airbnbActualizado = null;
+let airbnbError = false;
+let airbnbUltimaCarga = 0;
+let abProximos = [];
+let abConfigConectado = null;
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function esFechaISO(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v); }
+
+async function cargarAirbnb(forzar) {
+  if (!airbnbUrl) { airbnbEventos = []; renderAirbnb(); return; }
+  if (!forzar && Date.now() - airbnbUltimaCarga < 120000) return;
+  airbnbUltimaCarga = Date.now();
+  try {
+    const res = await fetch(airbnbUrl);
+    const data = await res.json();
+    const lista = Array.isArray(data && data.eventos) ? data.eventos : [];
+    airbnbEventos = lista
+      .filter(e => e && esFechaISO(e.inicio) && esFechaISO(e.fin) && e.fin > e.inicio)
+      .map(e => ({
+        inicio: e.inicio,
+        fin: e.fin,
+        nombre: typeof e.nombre === 'string' ? e.nombre.slice(0, 80) : ''
+      }));
+    airbnbActualizado = new Date();
+    airbnbError = false;
+  } catch (e) {
+    airbnbError = true;
+  }
+  renderCalendario();
+  renderReservas();
+}
+
+function abCargada(ev) {
+  return reservas.some(r => r.entrada && r.salida && r.entrada < ev.fin && r.salida > ev.inicio);
+}
+function nochesEntre(a, b) {
+  const pa = a.split('-'), pb = b.split('-');
+  return Math.round((new Date(+pb[0], +pb[1] - 1, +pb[2]) - new Date(+pa[0], +pa[1] - 1, +pa[2])) / 86400000);
+}
+
+function renderAirbnb() {
+  const card = document.getElementById('ab-card');
+  const list = document.getElementById('ab-list');
+  const estado = document.getElementById('ab-estado');
+  if (!card) return;
+  card.style.display = (airbnbUrl || currentRole === 'editor') ? '' : 'none';
+  const inp = document.getElementById('ab-url');
+  if (inp && document.activeElement !== inp) inp.value = airbnbUrl || '';
+  const conectado = !!airbnbUrl;
+  if (conectado !== abConfigConectado) { document.getElementById('ab-config').open = !conectado; abConfigConectado = conectado; }
+  if (!airbnbUrl) {
+    estado.textContent = '';
+    list.innerHTML = '<div class="empty">Todavía no está conectado. Pegá abajo la URL del puente de Apps Script.</div>';
+    return;
+  }
+  if (airbnbError) estado.textContent = 'No se pudo leer Airbnb';
+  else if (airbnbActualizado) estado.textContent = 'Actualizado ' + pad(airbnbActualizado.getHours()) + ':' + pad(airbnbActualizado.getMinutes());
+  else estado.textContent = 'Cargando…';
+  const hoy = todayISO();
+  abProximos = airbnbEventos.filter(ev => ev.fin >= hoy).sort((a, b) => a.inicio.localeCompare(b.inicio));
+  if (!abProximos.length) {
+    list.innerHTML = '<div class="empty">' + (airbnbActualizado ? 'No hay reservas próximas en Airbnb.' : '') + '</div>';
+    return;
+  }
+  list.innerHTML = abProximos.map((ev, i) => {
+    const cargada = abCargada(ev);
+    const n = nochesEntre(ev.inicio, ev.fin);
+    const estadoHtml = cargada
+      ? '<span class="cal-chip ab-chip-ok">Cargada</span>'
+      : '<div style="display:flex; gap:6px; align-items:center;"><span class="cal-chip ab-chip-falta">Falta cargar</span><button type="button" class="editor-only ab-cargar" data-i="' + i + '" style="height:28px; padding:0 10px; font-size:12px;">Cargar</button></div>';
+    return '<div class="list-item res" style="border-left-color:' + (cargada ? '#5C7A4A' : '#B5542F') + ';"><div class="li-top"><div>'
+      + '<div class="li-title">' + esc(ev.nombre || 'Huésped de Airbnb') + '</div>'
+      + '<div class="li-sub">' + formatFecha(ev.inicio) + ' al ' + formatFecha(ev.fin) + ' · ' + n + ' noche' + (n === 1 ? '' : 's') + '</div>'
+      + '</div>' + estadoHtml + '</div></div>';
+  }).join('');
+}
+
 function renderCalendario() {
   const grid = document.getElementById('cal-grid');
   const label = document.getElementById('cal-label');
@@ -1061,27 +1197,39 @@ function renderCalendario() {
     const isToday = dateStr === todayStr;
     let style = '';
     let guestHtml = '';
+    let extraClass = '';
     if (match) {
       const c = colorMap[match.id];
       style = ' style="background:' + c.bg + ';color:' + c.text + ';"';
       guestHtml = '<div class="cal-guest">' + (match.huesped ? match.huesped.split(' ')[0] : 'Reserva') + '</div>';
+    } else {
+      const abPend = airbnbEventos.find(ev => ev.inicio <= dateStr && dateStr < ev.fin && !abCargada(ev));
+      if (abPend) {
+        extraClass = ' airbnb';
+        guestHtml = '<div class="cal-guest">' + esc(abPend.nombre ? abPend.nombre.split(' ')[0] : 'Airbnb') + '</div>';
+      }
     }
+    const tresHtml = (match && match.tresHuespedes && match.entrada === dateStr) ? '<div class="cal-tres">3 HUÉSP.</div>' : '';
     const dayNotes = notas.filter(n => n.fecha === dateStr);
     const noteHtml = dayNotes.map(n => '<div class="cal-note">' + n.texto + '</div>').join('');
-    html += '<div class="cal-cell' + (isToday ? ' today' : '') + '" data-date="' + dateStr + '"' + style + '><div class="cal-day">' + d + '</div>' + guestHtml + noteHtml + '</div>';
+    html += '<div class="cal-cell' + extraClass + (isToday ? ' today' : '') + '" data-date="' + dateStr + '"' + style + '><div class="cal-day">' + d + '</div>' + guestHtml + tresHtml + noteHtml + '</div>';
   }
   grid.innerHTML = html;
   const monthStart = y + '-' + pad(m + 1) + '-01';
   const monthEnd = y + '-' + pad(m + 1) + '-' + pad(total);
   const resEsteMes = sortedRes.filter(r => r.entrada <= monthEnd && r.salida >= monthStart);
-  if (!resEsteMes.length) {
+  const abMes = airbnbEventos.filter(ev => !abCargada(ev) && ev.inicio <= monthEnd && ev.fin > monthStart);
+  if (!resEsteMes.length && !abMes.length) {
     legend.innerHTML = '<div class="empty">No hay reservas este mes.</div>';
   } else {
     legend.innerHTML = resEsteMes.map(r => {
       const c = colorMap[r.id];
-      return '<span class="cal-chip" style="background:' + c.bg + ';color:' + c.text + '">' + (r.huesped || 'Sin nombre') + '</span>';
-    }).join('');
+      return '<span class="cal-chip" style="background:' + c.bg + ';color:' + c.text + '">' + (r.huesped || 'Sin nombre') + (r.tresHuespedes ? ' · <b>3 HUÉSPEDES</b>' : '') + '</span>';
+    }).join('') + abMes.map(ev =>
+      '<span class="cal-chip" style="background:#FBF3EE;color:#8F3F22;box-shadow:inset 0 0 0 1.5px #D9A58C;">' + esc(ev.nombre || 'Airbnb') + ' · falta cargar</span>'
+    ).join('');
   }
+  renderAirbnb();
   renderNotas();
 }
 
@@ -1103,6 +1251,7 @@ function clearStatusNow(el) {
 let editingReservaId = null;
 
 function resetReservaForm() {
+  document.getElementById('r-tres').checked = false;
   ['r-huesped', 'r-entrada', 'r-salida', 'r-pago', 'r-limpieza'].forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
@@ -1120,8 +1269,9 @@ function startEditReserva(r) {
   document.getElementById('r-huesped').value = r.huesped || '';
   document.getElementById('r-entrada').value = r.entrada || '';
   document.getElementById('r-salida').value = r.salida || '';
-  document.getElementById('r-pago').value = r.pago || '';
-  document.getElementById('r-limpieza').value = r.limpieza || '';
+  document.getElementById('r-pago').value = r.pago ? montoAInput(r.pago) : '';
+  document.getElementById('r-limpieza').value = r.limpieza ? montoAInput(r.limpieza) : '';
+  document.getElementById('r-tres').checked = !!r.tresHuespedes;
   ['r-huesped', 'r-entrada', 'r-salida', 'r-pago'].forEach(id => document.getElementById(id).classList.remove('invalid'));
   clearStatusNow(document.getElementById('r-status'));
   document.getElementById('r-add').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>Guardar cambios';
@@ -1157,7 +1307,7 @@ function startEditGasto(g) {
   editingGastoId = g.id;
   document.getElementById('g-fecha').value = g.fecha || '';
   document.getElementById('g-concepto').value = g.concepto || '';
-  document.getElementById('g-monto').value = g.monto || '';
+  document.getElementById('g-monto').value = g.monto ? montoAInput(g.monto) : '';
   document.getElementById('g-categoria').value = g.categoria || '';
   populateCategorias();
   document.getElementById('g-categoria').value = g.categoria || '';
@@ -1196,7 +1346,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'resumen') renderResumen();
-    if (tab.dataset.tab === 'calendario') renderCalendario();
+    if (tab.dataset.tab === 'calendario') { renderCalendario(); cargarAirbnb(); }
     if (tab.dataset.tab === 'rendicion') renderRendicion();
     if (tab.dataset.tab === 'costeo') { renderCosteo(); fetchUsdRate(); }
   });
@@ -1232,8 +1382,9 @@ document.getElementById('r-add').addEventListener('click', async () => {
   const huesped = elHuesped.value.trim();
   const entrada = elEntrada.value;
   const salida = elSalida.value;
-  const pago = parseFloat(elPago.value) || 0;
-  const limpieza = parseFloat(document.getElementById('r-limpieza').value) || 0;
+  const pago = parseMonto(elPago.value);
+  const limpieza = parseMonto(document.getElementById('r-limpieza').value);
+  const tresHuespedes = document.getElementById('r-tres').checked;
   const comisionPct = 30;
   [elHuesped, elEntrada, elSalida, elPago].forEach(el => el.classList.remove('invalid'));
   const faltantes = [];
@@ -1262,10 +1413,10 @@ document.getElementById('r-add').addEventListener('click', async () => {
   setStatus(status, 'Guardando...');
   try {
     if (idEnEdicion) {
-      await updateDoc(doc(db, 'reservas', idEnEdicion), { huesped, entrada, salida, pago, limpieza, comisionPct });
+      await updateDoc(doc(db, 'reservas', idEnEdicion), { huesped, entrada, salida, pago, limpieza, comisionPct, tresHuespedes });
       setStatus(status, 'Reserva actualizada.', 'ok');
     } else {
-      await addDoc(reservasCol, { huesped, entrada, salida, pago, limpieza, comisionPct });
+      await addDoc(reservasCol, { huesped, entrada, salida, pago, limpieza, comisionPct, tresHuespedes });
       setStatus(status, 'Reserva guardada.', 'ok');
     }
   } catch (e) {
@@ -1289,7 +1440,7 @@ document.getElementById('g-add').addEventListener('click', async () => {
   const status = document.getElementById('g-status');
   const fecha = document.getElementById('g-fecha').value;
   const concepto = document.getElementById('g-concepto').value.trim();
-  const monto = parseFloat(document.getElementById('g-monto').value) || 0;
+  const monto = parseMonto(document.getElementById('g-monto').value);
   const selCategoria = document.getElementById('g-categoria');
   const nuevaInput = document.getElementById('g-categoria-nueva');
   let categoria = selCategoria.value;
@@ -1343,8 +1494,8 @@ document.getElementById('conv-add').addEventListener('click', async () => {
   const fecha = document.getElementById('conv-fecha').value;
   const elPesos = document.getElementById('conv-pesos');
   const elDolares = document.getElementById('conv-dolares');
-  const pesos = parseFloat(elPesos.value) || 0;
-  const dolares = parseFloat(elDolares.value) || 0;
+  const pesos = parseMonto(elPesos.value);
+  const dolares = parseMonto(elDolares.value);
   if (!fecha || !pesos || !dolares) { setStatus(status, 'Falta la fecha, los pesos o los dólares.', 'err'); return; }
   document.getElementById('conv-fecha').value = ''; elPesos.value = ''; elDolares.value = '';
   setStatus(status, 'Guardando...');
@@ -1361,7 +1512,7 @@ document.getElementById('rend-add').addEventListener('click', async () => {
   const status = document.getElementById('rend-status');
   const fecha = document.getElementById('rend-fecha').value;
   const elDolares = document.getElementById('rend-dolares');
-  const dolares = parseFloat(elDolares.value) || 0;
+  const dolares = parseMonto(elDolares.value);
   if (!fecha || !dolares) { setStatus(status, 'Falta la fecha o los dólares entregados.', 'err'); return; }
   document.getElementById('rend-fecha').value = ''; elDolares.value = '';
   setStatus(status, 'Guardando...');
@@ -1372,6 +1523,39 @@ document.getElementById('rend-add').addEventListener('click', async () => {
     setStatus(status, 'No se pudo guardar. Probá de nuevo.', 'err');
   }
 });
+
+document.getElementById('ab-guardar').addEventListener('click', async () => {
+  if (currentRole !== 'editor') return;
+  const status = document.getElementById('ab-status');
+  const url = document.getElementById('ab-url').value.trim();
+  if (url && !/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(url)) {
+    setStatus(status, 'Esa URL no parece la del puente. Tiene que empezar con https://script.google.com/macros/s/ y terminar en /exec.', 'err');
+    return;
+  }
+  setStatus(status, 'Guardando...');
+  try {
+    await setDoc(doc(db, 'publico', 'airbnb'), { url: url || null }, { merge: true });
+    setStatus(status, url ? 'Conectado. Buscando reservas…' : 'Desconectado.', 'ok');
+  } catch (e) {
+    setStatus(status, 'No se pudo guardar. ¿Agregaste la regla de "publico" en Firestore?', 'err');
+  }
+});
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.ab-cargar');
+  if (!btn || currentRole !== 'editor') return;
+  const ev = abProximos[+btn.dataset.i];
+  if (!ev) return;
+  document.querySelector('.tab[data-tab="reservas"]').click();
+  resetReservaForm();
+  document.getElementById('r-huesped').value = ev.nombre || '';
+  document.getElementById('r-entrada').value = ev.inicio;
+  document.getElementById('r-salida').value = ev.fin;
+  setStatus(document.getElementById('r-status'), 'Nombre y fechas traídos de Airbnb. Completá lo que pagó y la limpieza.');
+  const pago = document.getElementById('r-pago');
+  pago.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  pago.focus();
+});
+setInterval(() => cargarAirbnb(true), 15 * 60 * 1000);
 
 document.getElementById('n-add').addEventListener('click', async () => {
   if (currentRole !== 'editor') return;
@@ -1394,7 +1578,7 @@ document.getElementById('g-mes').addEventListener('change', renderGastos);
 document.getElementById('co-mes').addEventListener('change', renderCosteo);
 document.getElementById('co-usd').addEventListener('input', () => {
   if (!usdManual) return;
-  const v = parseFloat(document.getElementById('co-usd').value);
+  const v = parseMonto(document.getElementById('co-usd').value);
   usdRate = (v && v > 0) ? v : null;
   renderCosteo();
 });
@@ -1427,7 +1611,7 @@ async function fetchUsdRate() {
     const r = data && data.rates && data.rates.ARS;
     if (!r) throw new Error('sin dato');
     usdRate = r;
-    if (inp) inp.value = String(Math.round(r * 100) / 100);
+    if (inp) inp.value = montoAInput(r);
     if (note) note.textContent = 'Cotización automática (oficial), se actualiza sola. Tocá el lápiz para editarla.';
     renderCosteo();
   } catch (e) {
@@ -1599,6 +1783,11 @@ function attachListeners() {
     notas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderCalendario();
   });
+  onSnapshot(doc(db, 'publico', 'airbnb'), snap => {
+    const u = snap.exists() ? (snap.data().url || null) : null;
+    if (u !== airbnbUrl) { airbnbUrl = u; airbnbActualizado = null; cargarAirbnb(true); }
+    else renderAirbnb();
+  }, () => { renderAirbnb(); });
   onSnapshot(mesesCerradosCol, snap => {
     mesesCerrados = snap.docs.map(d => ({ mes: d.id, ...d.data() }));
     renderResumen(); renderCosteo();
