@@ -547,8 +547,11 @@ function calcReserva(r) {
   return { base, comision, neto };
 }
 
+// Uno puede salir y otro entrar el mismo día. Lo que no se puede es compartir una noche
+// (ni que dos reservas empiecen el mismo día).
 function findOverlap(entrada, salida, excludeId) {
-  return reservas.find(r => r.id !== excludeId && r.entrada && r.salida && entrada <= r.salida && salida >= r.entrada);
+  return reservas.find(r => r.id !== excludeId && r.entrada && r.salida &&
+    ((entrada < r.salida && salida > r.entrada) || entrada === r.entrada));
 }
 
 let rModoPeriodo = 'mes';
@@ -1193,26 +1196,40 @@ function renderCalendario() {
   for (let i = 0; i < first; i++) { html += '<div class="cal-cell empty"></div>'; }
   for (let d = 1; d <= total; d++) {
     const dateStr = y + '-' + pad(m + 1) + '-' + pad(d);
-    const match = sortedRes.find(r => r.entrada <= dateStr && dateStr <= r.salida);
+    // El mismo día puede salir una reserva y entrar otra: esa celda se parte en diagonal
+    // (arriba a la izquierda el color del que sale, abajo a la derecha el del que entra).
+    const delDia = sortedRes.filter(r => r.entrada <= dateStr && dateStr <= r.salida);
+    const entra = delDia.find(r => r.entrada === dateStr);
+    const sale = delDia.find(r => r.salida === dateStr && r !== entra);
+    const match = entra || delDia[0];
+    const abPend = (!match || (sale && !entra))
+      ? airbnbEventos.find(ev => ev.inicio <= dateStr && dateStr < ev.fin && !abCargada(ev))
+      : null;
     const isToday = dateStr === todayStr;
     let style = '';
     let guestHtml = '';
     let extraClass = '';
-    if (match) {
+    let titulo = '';
+    if (sale && (entra || abPend)) {
+      const bgSale = colorMap[sale.id].bg;
+      const bgEntra = entra ? colorMap[entra.id].bg : '#FBF3EE';
+      const txtEntra = entra ? colorMap[entra.id].text : '#8F3F22';
+      const nombreEntra = entra ? (entra.huesped || 'Reserva') : (abPend.nombre || 'Airbnb');
+      style = ' style="background:linear-gradient(135deg,' + bgSale + ' 50%,' + bgEntra + ' 50%);color:' + txtEntra + ';"';
+      guestHtml = '<div class="cal-guest">' + esc(nombreEntra.split(' ')[0]) + '</div>';
+      titulo = 'Sale ' + (sale.huesped || 'Reserva') + ' · Entra ' + nombreEntra + (entra ? '' : ' (falta cargar)');
+    } else if (match) {
       const c = colorMap[match.id];
       style = ' style="background:' + c.bg + ';color:' + c.text + ';"';
       guestHtml = '<div class="cal-guest">' + (match.huesped ? match.huesped.split(' ')[0] : 'Reserva') + '</div>';
-    } else {
-      const abPend = airbnbEventos.find(ev => ev.inicio <= dateStr && dateStr < ev.fin && !abCargada(ev));
-      if (abPend) {
-        extraClass = ' airbnb';
-        guestHtml = '<div class="cal-guest">' + esc(abPend.nombre ? abPend.nombre.split(' ')[0] : 'Airbnb') + '</div>';
-      }
+    } else if (abPend) {
+      extraClass = ' airbnb';
+      guestHtml = '<div class="cal-guest">' + esc(abPend.nombre ? abPend.nombre.split(' ')[0] : 'Airbnb') + '</div>';
     }
     const tresHtml = (match && match.tresHuespedes && match.entrada === dateStr) ? '<div class="cal-tres">3 HUÉSP.</div>' : '';
     const dayNotes = notas.filter(n => n.fecha === dateStr);
     const noteHtml = dayNotes.map(n => '<div class="cal-note">' + n.texto + '</div>').join('');
-    html += '<div class="cal-cell' + extraClass + (isToday ? ' today' : '') + '" data-date="' + dateStr + '"' + style + '><div class="cal-day">' + d + '</div>' + guestHtml + tresHtml + noteHtml + '</div>';
+    html += '<div class="cal-cell' + extraClass + (isToday ? ' today' : '') + '" data-date="' + dateStr + '"' + style + (titulo ? ' title="' + esc(titulo) + '"' : '') + '><div class="cal-day">' + d + '</div>' + guestHtml + tresHtml + noteHtml + '</div>';
   }
   grid.innerHTML = html;
   const monthStart = y + '-' + pad(m + 1) + '-01';
