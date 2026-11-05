@@ -1013,19 +1013,6 @@ const fmtUSD = (n) => {
   return (neg ? '-US$' : 'US$') + n.toLocaleString('es-AR', opts);
 };
 
-let ultimoSaldoPublicado = null;
-function publicarSaldo(saldoARS) {
-  if (currentRole !== 'editor') return;
-  const val = Math.round((saldoARS || 0) * 100) / 100;
-  if (val === ultimoSaldoPublicado) return;
-  ultimoSaldoPublicado = val;
-  setDoc(doc(db, 'publico', 'saldo'), {
-    saldoNum: val,
-    saldo: String(val),
-    actualizadoEl: new Date().toISOString()
-  }, { merge: true }).catch(() => {});
-}
-
 function renderRendicion() {
   let generadoARS = 0;
   reservas.forEach(r => {
@@ -1041,7 +1028,6 @@ function renderRendicion() {
     dolaresConvertidos += c.dolares || 0;
   });
   const saldoARS = generadoARS - pesosConvertidos;
-  publicarSaldo(saldoARS);
 
   let dolaresRendidos = 0;
   rendicionesUSD.forEach(u => { dolaresRendidos += u.dolares || 0; });
