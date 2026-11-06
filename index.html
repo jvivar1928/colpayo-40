@@ -163,6 +163,7 @@
   .ab-chip-falta { background: #F6E3DA; color: #8F3F22; }
   .check-tres { display: flex; align-items: center; gap: 8px; height: 36px; font-size: 14px; color: #3A2E22; margin: 0; cursor: pointer; }
   .check-tres input { width: 18px; height: 18px; accent-color: #B5542F; margin: 0; }
+  .chip-chico { font-size: 10.5px; padding: 2px 8px; margin-left: 8px; vertical-align: middle; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -232,6 +233,7 @@
         <div class="co-nota" id="ab-estado" style="margin-top:0;"></div>
       </div>
       <div id="ab-list"></div>
+      <div class="status" id="ab-cargar-status"></div>
       <details class="editor-only" id="ab-config" style="margin-top:12px;">
         <summary style="font-size:12.5px; color:#766B5A; cursor:pointer;">Conexión con Airbnb</summary>
         <div class="field" style="margin-top:8px;"><label>URL del puente (Apps Script)</label><input type="text" id="ab-url" placeholder="https://script.google.com/macros/s/…/exec" /></div>
@@ -602,7 +604,7 @@ function renderReservas() {
   const sorted = [...filtradas].sort((a, b) => (b.entrada || '').localeCompare(a.entrada || ''));
   list.innerHTML = sorted.map(r => {
     const { base, comision, neto } = calcReserva(r);
-    return '<div class="list-item res"><div class="li-top"><div><div class="li-title">' + (r.huesped || 'Sin nombre') + '</div><div class="li-sub">' + formatFecha(r.entrada) + ' al ' + formatFecha(r.salida) + '</div></div><div style="display:flex; gap:2px;"><button class="edit-btn" data-id="' + r.id + '" aria-label="Editar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="del" data-id="' + r.id + '" data-kind="r" aria-label="Eliminar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div></div><div class="li-nums"><span>Pagó: <b>' + fmt(r.pago) + '</b></span><span>Limpieza: <b>' + fmt(r.limpieza) + '</b></span><span>Base: <b>' + fmt(base) + '</b></span><span>Comisión (' + r.comisionPct + '%): <b class="purple">' + fmt(comision) + '</b></span><span>Neto Lucy: <b class="teal">' + fmt(neto) + '</b></span></div></div>';
+    return '<div class="list-item res"><div class="li-top"><div><div class="li-title">' + esc(r.huesped || 'Sin nombre') + (r.pago ? '' : '<span class="cal-chip ab-chip-falta chip-chico">Falta el pago</span>') + '</div><div class="li-sub">' + formatFecha(r.entrada) + ' al ' + formatFecha(r.salida) + '</div></div><div style="display:flex; gap:2px;"><button class="edit-btn" data-id="' + r.id + '" aria-label="Editar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="del" data-id="' + r.id + '" data-kind="r" aria-label="Eliminar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div></div><div class="li-nums"><span>Pagó: <b>' + fmt(r.pago) + '</b></span><span>Limpieza: <b>' + fmt(r.limpieza) + '</b></span><span>Base: <b>' + fmt(base) + '</b></span><span>Comisión (' + r.comisionPct + '%): <b class="purple">' + fmt(comision) + '</b></span><span>Neto Lucy: <b class="teal">' + fmt(neto) + '</b></span></div></div>';
   }).join('');
 }
 
@@ -1097,7 +1099,7 @@ function esc(s) {
 function esFechaISO(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v); }
 
 async function cargarAirbnb(forzar) {
-  if (!airbnbUrl) { airbnbEventos = []; renderAirbnb(); return; }
+  if (!airbnbUrl) { airbnbEventos = []; airbnbError = false; renderCalendario(); return; }
   if (!forzar && Date.now() - airbnbUltimaCarga < 120000) return;
   airbnbUltimaCarga = Date.now();
   try {
@@ -1106,11 +1108,15 @@ async function cargarAirbnb(forzar) {
     const lista = Array.isArray(data && data.eventos) ? data.eventos : [];
     airbnbEventos = lista
       .filter(e => e && esFechaISO(e.inicio) && esFechaISO(e.fin) && e.fin > e.inicio)
-      .map(e => ({
-        inicio: e.inicio,
-        fin: e.fin,
-        nombre: typeof e.nombre === 'string' ? e.nombre.slice(0, 80) : ''
-      }));
+      .map(e => {
+        const h = Number(e.huespedes);
+        return {
+          inicio: e.inicio,
+          fin: e.fin,
+          nombre: typeof e.nombre === 'string' ? e.nombre.slice(0, 80) : '',
+          huespedes: (Number.isInteger(h) && h > 0 && h <= 20) ? h : null
+        };
+      });
     airbnbActualizado = new Date();
     airbnbError = false;
   } catch (e) {
@@ -1120,9 +1126,10 @@ async function cargarAirbnb(forzar) {
   renderReservas();
 }
 
-function abCargada(ev) {
-  return reservas.some(r => r.entrada && r.salida && r.entrada < ev.fin && r.salida > ev.inicio);
+function abReserva(ev) {
+  return reservas.find(r => r.entrada && r.salida && r.entrada < ev.fin && r.salida > ev.inicio);
 }
+function abCargada(ev) { return !!abReserva(ev); }
 function nochesEntre(a, b) {
   const pa = a.split('-'), pb = b.split('-');
   return Math.round((new Date(+pb[0], +pb[1] - 1, +pb[2]) - new Date(+pa[0], +pa[1] - 1, +pa[2])) / 86400000);
@@ -1153,14 +1160,15 @@ function renderAirbnb() {
     return;
   }
   list.innerHTML = abProximos.map((ev, i) => {
-    const cargada = abCargada(ev);
+    const r = abReserva(ev);
     const n = nochesEntre(ev.inicio, ev.fin);
-    const estadoHtml = cargada
-      ? '<span class="cal-chip ab-chip-ok">Cargada</span>'
+    const estadoHtml = r
+      ? '<div style="display:flex; gap:6px; align-items:center;"><span class="cal-chip ab-chip-ok">Cargada</span>' + (r.pago ? '' : '<span class="cal-chip ab-chip-falta">Sin pago</span>') + '</div>'
       : '<div style="display:flex; gap:6px; align-items:center;"><span class="cal-chip ab-chip-falta">Falta cargar</span><button type="button" class="editor-only ab-cargar" data-i="' + i + '" style="height:28px; padding:0 10px; font-size:12px;">Cargar</button></div>';
-    return '<div class="list-item res" style="border-left-color:' + (cargada ? '#5C7A4A' : '#B5542F') + ';"><div class="li-top"><div>'
+    return '<div class="list-item res" style="border-left-color:' + (r ? '#5C7A4A' : '#B5542F') + ';"><div class="li-top"><div>'
       + '<div class="li-title">' + esc(ev.nombre || 'Huésped de Airbnb') + '</div>'
-      + '<div class="li-sub">' + formatFecha(ev.inicio) + ' al ' + formatFecha(ev.fin) + ' · ' + n + ' noche' + (n === 1 ? '' : 's') + '</div>'
+      + '<div class="li-sub">' + formatFecha(ev.inicio) + ' al ' + formatFecha(ev.fin) + ' · ' + n + ' noche' + (n === 1 ? '' : 's')
+      + (ev.huespedes ? ' · ' + ev.huespedes + ' huésped' + (ev.huespedes === 1 ? '' : 'es') : '') + '</div>'
       + '</div>' + estadoHtml + '</div></div>';
   }).join('');
 }
@@ -1207,7 +1215,7 @@ function renderCalendario() {
     } else if (match) {
       const c = colorMap[match.id];
       style = ' style="background:' + c.bg + ';color:' + c.text + ';"';
-      guestHtml = '<div class="cal-guest">' + (match.huesped ? match.huesped.split(' ')[0] : 'Reserva') + '</div>';
+      guestHtml = '<div class="cal-guest">' + esc(match.huesped ? match.huesped.split(' ')[0] : 'Reserva') + '</div>';
     } else if (abPend) {
       extraClass = ' airbnb';
       guestHtml = '<div class="cal-guest">' + esc(abPend.nombre ? abPend.nombre.split(' ')[0] : 'Airbnb') + '</div>';
@@ -1227,7 +1235,7 @@ function renderCalendario() {
   } else {
     legend.innerHTML = resEsteMes.map(r => {
       const c = colorMap[r.id];
-      return '<span class="cal-chip" style="background:' + c.bg + ';color:' + c.text + '">' + (r.huesped || 'Sin nombre') + (r.tresHuespedes ? ' · <b>3 HUÉSPEDES</b>' : '') + '</span>';
+      return '<span class="cal-chip" style="background:' + c.bg + ';color:' + c.text + '">' + esc(r.huesped || 'Sin nombre') + (r.tresHuespedes ? ' · <b>3 HUÉSPEDES</b>' : '') + '</span>';
     }).join('') + abMes.map(ev =>
       '<span class="cal-chip" style="background:#FBF3EE;color:#8F3F22;box-shadow:inset 0 0 0 1.5px #D9A58C;">' + esc(ev.nombre || 'Airbnb') + ' · falta cargar</span>'
     ).join('');
@@ -1408,7 +1416,7 @@ document.getElementById('r-add').addEventListener('click', async () => {
   const conflict = findOverlap(entrada, salida, editingReservaId);
   if (conflict) {
     elEntrada.classList.add('invalid'); elSalida.classList.add('invalid');
-    setStatus(status, 'Esas fechas se cruzan con la estadía de <b>' + (conflict.huesped || 'un inquilino sin nombre') + '</b>, del ' + formatFecha(conflict.entrada) + ' al ' + formatFecha(conflict.salida) + '.', 'err');
+    setStatus(status, 'Esas fechas se cruzan con la estadía de <b>' + esc(conflict.huesped || 'un inquilino sin nombre') + '</b>, del ' + formatFecha(conflict.entrada) + ' al ' + formatFecha(conflict.salida) + '.', 'err');
     return;
   }
   const idEnEdicion = editingReservaId;
@@ -1543,20 +1551,46 @@ document.getElementById('ab-guardar').addEventListener('click', async () => {
     setStatus(status, 'No se pudo guardar. ¿Agregaste la regla de "publico" en Firestore?', 'err');
   }
 });
-document.addEventListener('click', (e) => {
+// "Cargar" guarda la reserva de Airbnb directo, sin pago ni limpieza: pagan en dólares y
+// los pesos se cargan después, editando la reserva. Si el mail dice 3 o más huéspedes, marca la casilla.
+const abGuardando = new Set();
+document.addEventListener('click', async (e) => {
   const btn = e.target.closest('.ab-cargar');
   if (!btn || currentRole !== 'editor') return;
   const ev = abProximos[+btn.dataset.i];
   if (!ev) return;
-  document.querySelector('.tab[data-tab="reservas"]').click();
-  resetReservaForm();
-  document.getElementById('r-huesped').value = ev.nombre || '';
-  document.getElementById('r-entrada').value = ev.inicio;
-  document.getElementById('r-salida').value = ev.fin;
-  setStatus(document.getElementById('r-status'), 'Nombre y fechas traídos de Airbnb. Completá lo que pagó y la limpieza.');
-  const pago = document.getElementById('r-pago');
-  pago.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  pago.focus();
+  const clave = ev.inicio + '|' + ev.fin;
+  if (abGuardando.has(clave) || abCargada(ev)) return;
+  const status = document.getElementById('ab-cargar-status');
+  if (mesEstaCerrado(monthKey(ev.inicio))) {
+    setStatus(status, 'No se puede cargar: el mes de ' + formatMes(monthKey(ev.inicio)) + ' está cerrado.', 'err');
+    return;
+  }
+  const conflict = findOverlap(ev.inicio, ev.fin, null);
+  if (conflict) {
+    setStatus(status, 'No se puede cargar: se cruza con la estadía de <b>' + esc(conflict.huesped || 'un inquilino sin nombre') + '</b>, del ' + formatFecha(conflict.entrada) + ' al ' + formatFecha(conflict.salida) + '.', 'err');
+    return;
+  }
+  abGuardando.add(clave);
+  btn.disabled = true;
+  setStatus(status, 'Cargando…');
+  try {
+    await addDoc(reservasCol, {
+      huesped: ev.nombre || 'Huésped de Airbnb',
+      entrada: ev.inicio,
+      salida: ev.fin,
+      pago: 0,
+      limpieza: 0,
+      comisionPct: 30,
+      tresHuespedes: (ev.huespedes || 0) >= 3
+    });
+    setStatus(status, 'Listo: quedó cargada sin pago.', 'ok');
+  } catch (err) {
+    btn.disabled = false;
+    setStatus(status, 'No se pudo cargar. Probá de nuevo.', 'err');
+  } finally {
+    abGuardando.delete(clave);
+  }
 });
 setInterval(() => cargarAirbnb(true), 15 * 60 * 1000);
 
@@ -1857,6 +1891,8 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   currentRole = user.uid === EDITOR_UID ? 'editor' : 'viewer';
+  // El saldo para Google Sheets se descartó (nov-2026): borra el que había quedado publicado.
+  if (currentRole === 'editor') deleteDoc(doc(db, 'publico', 'saldo')).catch(() => {});
   document.body.classList.remove('role-editor', 'role-viewer');
   document.body.classList.add('role-' + currentRole);
   document.getElementById('app-root').style.display = 'block';
