@@ -1848,12 +1848,21 @@ function prepararImportacion(arch) {
   const lista = c => [...sim[c].values()];
   const antes = calcularSaldos(reservas, gastos, conversionesUSD, rendicionesUSD);
   const despues = calcularSaldos(lista('reservas'), lista('gastos'), lista('conversionesUSD'), lista('rendicionesUSD'));
+  // Control: lo que el archivo mueve el saldo (si trae "antes" y "después", se compara la diferencia,
+  // así no importa si mientras tanto se cargó otra cosa).
   const ctl = arch.control || {};
-  if (typeof ctl.saldoDespues === 'number' && Math.abs(despues.ars - ctl.saldoDespues) >= 0.005) {
-    return { error: 'Con este archivo el saldo pendiente quedaría en ' + fmt(despues.ars) + ' y tendría que quedar en ' + fmt(ctl.saldoDespues) + '. No importé nada.' };
+  const esNum = k => typeof ctl[k] === 'number';
+  if (esNum('saldoDespues')) {
+    const esperado = esNum('saldoAntes') ? antes.ars + (ctl.saldoDespues - ctl.saldoAntes) : ctl.saldoDespues;
+    if (Math.abs(despues.ars - esperado) >= 0.005) {
+      return { error: 'Con este archivo el saldo pendiente quedaría en ' + fmt(despues.ars) + ' y tendría que quedar en ' + fmt(esperado) + '. No importé nada.' };
+    }
   }
-  if (typeof ctl.dolaresDespues === 'number' && Math.abs(despues.usd - ctl.dolaresDespues) >= 0.005) {
-    return { error: 'Con este archivo los dólares pendientes quedarían en ' + fmtUSD(despues.usd) + ' y tendrían que quedar en ' + fmtUSD(ctl.dolaresDespues) + '. No importé nada.' };
+  if (esNum('dolaresDespues')) {
+    const esperado = esNum('dolaresAntes') ? antes.usd + (ctl.dolaresDespues - ctl.dolaresAntes) : ctl.dolaresDespues;
+    if (Math.abs(despues.usd - esperado) >= 0.005) {
+      return { error: 'Con este archivo los dólares pendientes quedarían en ' + fmtUSD(despues.usd) + ' y tendrían que quedar en ' + fmtUSD(esperado) + '. No importé nada.' };
+    }
   }
   const verbos = { agregar: 'Agregar', reemplazar: 'Reemplazar', modificar: 'Modificar', borrar: 'Borrar' };
   const items = Object.entries(cuenta).map(([k, n]) => { const [v, c] = k.split('|'); return '<li>' + verbos[v] + ' ' + n + ' ' + IMP_NOMBRES[c][n === 1 ? 0 : 1] + '</li>'; });
