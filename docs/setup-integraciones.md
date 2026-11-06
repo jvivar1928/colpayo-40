@@ -180,6 +180,7 @@ Se descartó en nov-2026: la app ya no publica el saldo para Google Sheets. El s
 
 - Montos: la coma es el decimal. Si se toca el punto del teclado numérico se convierte en coma. No tipear puntos de miles.
 - Reservas abre por defecto en el mes (o año) actual.
+- Gastos, Resumen y Costeo: debajo del desplegable de Mes hay uno de Año (arranca en el año actual) que deja ver solo los meses de ese año.
 - Reservas: casilla "3 huéspedes" (campo `tresHuespedes` en `reservas`); en el calendario sale "3 HUÉSP." el día de entrada y "3 HUÉSPEDES" en la leyenda. Al cargar desde Airbnb se marca sola si el mail dice 3 o más huéspedes.
 - Airbnb: el botón **Cargar** de la tarjeta guarda la reserva directo (nombre, fechas y la casilla de 3 huéspedes), **sin pago ni limpieza**: pagan en dólares y los pesos se cargan después, editando la reserva. Mientras no tenga pago, en Reservas dice "Falta el pago" y en la tarjeta de Airbnb "Sin pago".
 - Si se corta la conexión con Airbnb (Airbnb o Google caídos), la app sigue mostrando lo último que leyó (queda guardado en cada dispositivo) y la tarjeta dice "No se pudo leer Airbnb · último dato: hh:mm". Las reservas ya cargadas en la app no dependen de Airbnb. Si se borra la URL del puente a propósito, dejan de verse las de Airbnb que faltan cargar.

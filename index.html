@@ -164,6 +164,11 @@
   .check-tres { display: flex; align-items: center; gap: 8px; height: 36px; font-size: 14px; color: #3A2E22; margin: 0; cursor: pointer; }
   .check-tres input { width: 18px; height: 18px; accent-color: #B5542F; margin: 0; }
   .chip-chico { font-size: 10.5px; padding: 2px 8px; margin-left: 8px; vertical-align: middle; white-space: nowrap; }
+  .anio-label { margin-top: 10px; }
+  .imp-box { margin-top: 12px; background: #FBF6EC; border: 0.5px solid #F0E7D3; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: #3A2E22; }
+  .imp-box ul { margin: 6px 0; padding-left: 18px; }
+  .imp-box li { margin: 2px 0; }
+  .imp-box .imp-ok { color: #3F5230; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -308,6 +313,8 @@
     <div class="card">
       <label>Mes</label>
       <select id="g-mes"></select>
+      <label class="anio-label">Año</label>
+      <select id="g-anio"></select>
     </div>
     <div class="card" id="g-list"><div class="empty">Cargando gastos...</div></div>
     <div class="card">
@@ -329,12 +336,25 @@
       <button id="export-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Descargar Excel</button>
       <div class="status" id="export-status"></div>
     </div>
+    <div class="card editor-only">
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Copia de seguridad e importación</div>
+      <div style="font-size:12px;color:#766B5A;margin-bottom:10px;">La copia baja todos los datos de la app en un archivo. Importar carga un archivo preparado; antes de cambiar nada se baja una copia sola.</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" id="backup-btn">Descargar copia de seguridad</button>
+        <button type="button" id="import-btn">Importar archivo…</button>
+      </div>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none;" />
+      <div id="import-preview"></div>
+      <div class="status" id="import-status"></div>
+    </div>
   </div>
 
   <div class="panel" id="panel-resumen">
     <div class="card">
       <label>Mes</label>
       <select id="s-mes"></select>
+      <label class="anio-label">Año</label>
+      <select id="s-anio"></select>
       <div style="margin-top:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span class="cal-chip" id="mes-cerrado-badge" style="display:none; background:#F1E9D6; color:#766B5A;">🔒 Mes cerrado</span>
         <button id="cerrar-mes-btn" class="editor-only" style="display:none;">Cerrar este mes</button>
@@ -361,6 +381,8 @@
     <div class="card">
       <label>Mes</label>
       <select id="co-mes"></select>
+      <label class="anio-label">Año</label>
+      <select id="co-anio"></select>
     </div>
     <div class="card">
       <div style="font-size:14px;font-weight:600;margin-bottom:2px;">Costos por estadía</div>
@@ -441,7 +463,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDm4VIjmqFBgCZ3fVAkuOH4I4EMh3UVKkA",
@@ -604,19 +626,37 @@ function renderReservas() {
   const sorted = [...filtradas].sort((a, b) => (b.entrada || '').localeCompare(a.entrada || ''));
   list.innerHTML = sorted.map(r => {
     const { base, comision, neto } = calcReserva(r);
-    return '<div class="list-item res"><div class="li-top"><div><div class="li-title">' + esc(r.huesped || 'Sin nombre') + (r.pago ? '' : '<span class="cal-chip ab-chip-falta chip-chico">Falta el pago</span>') + '</div><div class="li-sub">' + formatFecha(r.entrada) + ' al ' + formatFecha(r.salida) + '</div></div><div style="display:flex; gap:2px;"><button class="edit-btn" data-id="' + r.id + '" aria-label="Editar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="del" data-id="' + r.id + '" data-kind="r" aria-label="Eliminar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div></div><div class="li-nums"><span>Pagó: <b>' + fmt(r.pago) + '</b></span><span>Limpieza: <b>' + fmt(r.limpieza) + '</b></span><span>Base: <b>' + fmt(base) + '</b></span><span>Comisión (' + r.comisionPct + '%): <b class="purple">' + fmt(comision) + '</b></span><span>Neto Lucy: <b class="teal">' + fmt(neto) + '</b></span></div></div>';
+    return '<div class="list-item res"><div class="li-top"><div><div class="li-title">' + esc(r.huesped || 'Sin nombre') + ((r.pago || esImportada(r)) ? '' : '<span class="cal-chip ab-chip-falta chip-chico">Falta el pago</span>') + '</div><div class="li-sub">' + formatFecha(r.entrada) + ' al ' + formatFecha(r.salida) + '</div></div><div style="display:flex; gap:2px;"><button class="edit-btn" data-id="' + r.id + '" aria-label="Editar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="del" data-id="' + r.id + '" data-kind="r" aria-label="Eliminar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div></div><div class="li-nums"><span>Pagó: <b>' + fmt(r.pago) + '</b></span><span>Limpieza: <b>' + fmt(r.limpieza) + '</b></span><span>Base: <b>' + fmt(base) + '</b></span><span>Comisión (' + r.comisionPct + '%): <b class="purple">' + fmt(comision) + '</b></span><span>Neto Lucy: <b class="teal">' + fmt(neto) + '</b></span></div></div>';
   }).join('');
 }
 
+// Desplegables de Mes + Año: el de Mes muestra solo los meses del año elegido.
+// Arranca en el año actual (o el más reciente con datos) y, si está, en el mes actual.
+function poblarMesYAnio(selMes, selAnio, mesesSet, etiqueta, vacio) {
+  const meses = [...mesesSet].filter(m => /^\d{4}-\d{2}$/.test(m || '')).sort().reverse();
+  const anios = [...new Set(meses.map(m => m.slice(0, 4)))];
+  if (!anios.length) {
+    selAnio.innerHTML = '<option value="">—</option>';
+    selMes.innerHTML = '<option value="">' + vacio + '</option>';
+    return;
+  }
+  const anioActual = todayISO().slice(0, 4);
+  const prevAnio = selAnio.value;
+  selAnio.innerHTML = anios.map(a => '<option value="' + a + '">' + a + '</option>').join('');
+  selAnio.value = anios.includes(prevAnio) ? prevAnio : (anios.includes(anioActual) ? anioActual : anios[0]);
+  const delAnio = meses.filter(m => m.slice(0, 4) === selAnio.value);
+  const prevMes = selMes.value;
+  const mesActual = todayISO().slice(0, 7);
+  selMes.innerHTML = delAnio.map(m => '<option value="' + m + '">' + etiqueta(m) + '</option>').join('');
+  selMes.value = delAnio.includes(prevMes) ? prevMes : (delAnio.includes(mesActual) ? mesActual : delAnio[0]);
+}
+
 function populateGastoMonths() {
-  const sel = document.getElementById('g-mes');
   const months = new Set();
   gastos.forEach(g => g.fecha && months.add(monthKey(g.fecha)));
   mesesCerrados.forEach(mc => months.add(mc.mes));
-  const arr = [...months].sort().reverse();
-  const prev = sel.value;
-  sel.innerHTML = arr.length ? arr.map(m => '<option value="' + m + '">' + formatMes(m) + (mesEstaCerrado(m) ? ' 🔒' : '') + '</option>').join('') : '<option value="">Sin gastos todavía</option>';
-  if (arr.includes(prev)) sel.value = prev;
+  poblarMesYAnio(document.getElementById('g-mes'), document.getElementById('g-anio'), months,
+    m => formatMes(m) + (mesEstaCerrado(m) ? ' 🔒' : ''), 'Sin gastos todavía');
 }
 
 const CATEGORIAS_BASE = ['Limpieza', 'Tintorería', 'Mantenimiento', 'Insumos', 'Servicios', 'Acolchado', 'Comisiones'];
@@ -734,15 +774,12 @@ function getMesCerradoInfo(mes) { return mesesCerrados.find(mc => mc.mes === mes
 
 
 function populateMonths() {
-  const sel = document.getElementById('s-mes');
   const months = new Set();
   reservas.forEach(r => r.entrada && months.add(monthKey(r.entrada)));
   gastos.forEach(g => g.fecha && months.add(monthKey(g.fecha)));
   mesesCerrados.forEach(mc => months.add(mc.mes));
-  const arr = [...months].sort().reverse();
-  const prev = sel.value;
-  sel.innerHTML = arr.length ? arr.map(m => '<option value="' + m + '">' + formatMes(m) + (mesEstaCerrado(m) ? ' 🔒' : '') + '</option>').join('') : '<option value="">Sin datos todavía</option>';
-  if (arr.includes(prev)) sel.value = prev;
+  poblarMesYAnio(document.getElementById('s-mes'), document.getElementById('s-anio'), months,
+    m => formatMes(m) + (mesEstaCerrado(m) ? ' 🔒' : ''), 'Sin datos todavía');
 }
 
 function renderResumen() {
@@ -849,17 +886,12 @@ function diasTranscurridosAnio(anio) {
 }
 
 function populateCosteoMonths() {
-  const sel = document.getElementById('co-mes');
   const months = new Set();
   reservas.forEach(r => r.entrada && months.add(monthKey(r.entrada)));
   gastos.forEach(g => g.fecha && months.add(monthKey(g.fecha)));
   mesesCerrados.forEach(mc => months.add(mc.mes));
-  const arr = [...months].sort().reverse();
-  const prev = sel.value;
-  sel.innerHTML = arr.length
-    ? arr.map(m => '<option value="' + m + '">' + formatMes(m) + '</option>').join('')
-    : '<option value="">Sin datos todavía</option>';
-  if (arr.includes(prev)) sel.value = prev;
+  poblarMesYAnio(document.getElementById('co-mes'), document.getElementById('co-anio'), months,
+    m => formatMes(m), 'Sin datos todavía');
 }
 
 function renderCosteo() {
@@ -1640,6 +1672,9 @@ document.getElementById('n-add').addEventListener('click', async () => {
 document.getElementById('s-mes').addEventListener('change', renderResumen);
 document.getElementById('g-mes').addEventListener('change', renderGastos);
 document.getElementById('co-mes').addEventListener('change', renderCosteo);
+document.getElementById('s-anio').addEventListener('change', renderResumen);
+document.getElementById('g-anio').addEventListener('change', renderGastos);
+document.getElementById('co-anio').addEventListener('change', renderCosteo);
 document.getElementById('co-usd').addEventListener('input', () => {
   if (!usdManual) return;
   const v = parseMonto(document.getElementById('co-usd').value);
@@ -1707,6 +1742,198 @@ document.getElementById('export-btn').addEventListener('click', () => {
   } catch (e) {
     setStatus(status, 'No se pudo generar el Excel. Probá de nuevo.', 'err');
   }
+});
+
+// ---------- Copia de seguridad e importación ----------
+// Lo importado del Excel tiene un id que empieza con "xls-" (así se puede identificar y deshacer).
+function esImportada(r) { return typeof r.id === 'string' && r.id.startsWith('xls-'); }
+
+function armarCopia() {
+  const porId = (lista, clave) => {
+    const o = {};
+    lista.forEach(d => { const c = { ...d }; const id = c[clave]; delete c[clave]; o[id] = c; });
+    return o;
+  };
+  return {
+    proyecto: firebaseConfig.projectId,
+    fecha: new Date().toISOString(),
+    colecciones: {
+      reservas: porId(reservas, 'id'),
+      gastos: porId(gastos, 'id'),
+      notas: porId(notas, 'id'),
+      mesesCerrados: porId(mesesCerrados, 'mes'),
+      conversionesUSD: porId(conversionesUSD, 'id'),
+      rendicionesUSD: porId(rendicionesUSD, 'id'),
+      publico: airbnbUrl ? { airbnb: { url: airbnbUrl } } : {}
+    }
+  };
+}
+function descargarJSON(obj, nombre) {
+  const blob = new Blob([JSON.stringify(obj, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function descargarCopia() {
+  const d = new Date();
+  descargarJSON(armarCopia(), 'colpayo40-copia-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.json');
+}
+
+// Mismo cálculo que la pestaña Rendición.
+function calcularSaldos(res, gas, con, ren) {
+  let generado = 0, pesos = 0, usdConv = 0, usdRend = 0;
+  res.forEach(r => { const c = calcReserva(r); generado += (c.base - c.comision) + (r.limpieza || 0); });
+  gas.forEach(g => { generado -= g.monto || 0; });
+  con.forEach(c => { pesos += c.pesos || 0; usdConv += c.dolares || 0; });
+  ren.forEach(u => { usdRend += u.dolares || 0; });
+  return { ars: generado - pesos, usd: usdConv - usdRend };
+}
+
+const IMP_COLS = ['reservas', 'gastos', 'notas', 'conversionesUSD', 'rendicionesUSD', 'mesesCerrados'];
+const IMP_NOMBRES = {
+  reservas: ['reserva', 'reservas'], gastos: ['gasto', 'gastos'], notas: ['nota', 'notas'],
+  conversionesUSD: ['conversión a dólares', 'conversiones a dólares'], rendicionesUSD: ['rendición de dólares', 'rendiciones de dólares'],
+  mesesCerrados: ['mes cerrado', 'meses cerrados']
+};
+let importArch = null;
+let importArmado = null;
+
+function datosActuales(col) {
+  if (col === 'mesesCerrados') return mesesCerrados.map(m => ({ ...m, id: m.mes }));
+  return ({ reservas, gastos, notas, conversionesUSD, rendicionesUSD })[col].map(d => ({ ...d }));
+}
+function valorSimple(v) { return v === null || ['string', 'number', 'boolean'].includes(typeof v); }
+function mismoValor(a, b) { return (typeof a === 'number' && typeof b === 'number') ? Math.abs(a - b) < 0.005 : a === b; }
+
+// Revisa el archivo contra los datos actuales y simula el resultado, sin guardar nada.
+function prepararImportacion(arch) {
+  if (!arch || arch.tipo !== 'colpayo40-importacion' || !Array.isArray(arch.ops) || !arch.ops.length) {
+    return { error: 'Ese archivo no es una importación de Colpayo 40.' };
+  }
+  const sim = {};
+  IMP_COLS.forEach(c => { sim[c] = new Map(datosActuales(c).map(d => [d.id, d])); });
+  const cuenta = {};
+  const cambios = [];
+  for (let i = 0; i < arch.ops.length; i++) {
+    const o = arch.ops[i];
+    const donde = 'la operación ' + (i + 1);
+    if (!o || !['set', 'update', 'delete'].includes(o.op) || !IMP_COLS.includes(o.col) || typeof o.id !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(o.id)) {
+      return { error: 'El archivo tiene un error en ' + donde + '. No importé nada.' };
+    }
+    if (o.op !== 'delete' && (!o.data || typeof o.data !== 'object' || Array.isArray(o.data) || !Object.values(o.data).every(valorSimple))) {
+      return { error: 'El archivo tiene datos inválidos en ' + donde + '. No importé nada.' };
+    }
+    const m = sim[o.col];
+    const actual = m.get(o.id);
+    if (o.esperado) {
+      if (!actual) return { error: 'El archivo quiere modificar algo que ya no está en la app (' + donde + '). No importé nada.' };
+      for (const k of Object.keys(o.esperado)) {
+        if (!mismoValor(actual[k], o.esperado[k])) {
+          return { error: 'El archivo esperaba otro valor en "' + esc(actual.concepto || actual.huesped || o.id) + '". Parece que cambió desde que se armó el archivo. No importé nada.' };
+        }
+      }
+    }
+    const clave = (verbo) => { cuenta[verbo + '|' + o.col] = (cuenta[verbo + '|' + o.col] || 0) + 1; };
+    if (o.op === 'set') { clave(actual ? 'reemplazar' : 'agregar'); m.set(o.id, { ...o.data, id: o.id }); }
+    else if (o.op === 'update') {
+      if (!actual) return { error: 'El archivo quiere modificar algo que no existe (' + donde + '). No importé nada.' };
+      clave('modificar');
+      m.set(o.id, { ...actual, ...o.data });
+      if (o.col === 'gastos') cambios.push({ antes: actual, despues: m.get(o.id) });
+    } else if (actual) { clave('borrar'); m.delete(o.id); }
+  }
+  const lista = c => [...sim[c].values()];
+  const antes = calcularSaldos(reservas, gastos, conversionesUSD, rendicionesUSD);
+  const despues = calcularSaldos(lista('reservas'), lista('gastos'), lista('conversionesUSD'), lista('rendicionesUSD'));
+  const ctl = arch.control || {};
+  if (typeof ctl.saldoDespues === 'number' && Math.abs(despues.ars - ctl.saldoDespues) >= 0.005) {
+    return { error: 'Con este archivo el saldo pendiente quedaría en ' + fmt(despues.ars) + ' y tendría que quedar en ' + fmt(ctl.saldoDespues) + '. No importé nada.' };
+  }
+  if (typeof ctl.dolaresDespues === 'number' && Math.abs(despues.usd - ctl.dolaresDespues) >= 0.005) {
+    return { error: 'Con este archivo los dólares pendientes quedarían en ' + fmtUSD(despues.usd) + ' y tendrían que quedar en ' + fmtUSD(ctl.dolaresDespues) + '. No importé nada.' };
+  }
+  const verbos = { agregar: 'Agregar', reemplazar: 'Reemplazar', modificar: 'Modificar', borrar: 'Borrar' };
+  const items = Object.entries(cuenta).map(([k, n]) => { const [v, c] = k.split('|'); return '<li>' + verbos[v] + ' ' + n + ' ' + IMP_NOMBRES[c][n === 1 ? 0 : 1] + '</li>'; });
+  cambios.forEach(ch => items.push('<li>Gasto "' + esc(ch.antes.concepto || 'sin nombre') + '": ' + fmt(ch.antes.monto) + ' → ' + fmt(ch.despues.monto) + '</li>'));
+  const html = '<div class="imp-box"><b>' + esc(arch.descripcion || 'Importación') + '</b><ul>' + items.join('') + '</ul>'
+    + '<div>Saldo pendiente: <b>' + fmt(antes.ars) + '</b> → <b class="imp-ok">' + fmt(despues.ars) + '</b></div>'
+    + '<div>Dólares pendientes: <b>' + fmtUSD(antes.usd) + '</b> → <b class="imp-ok">' + fmtUSD(despues.usd) + '</b></div>'
+    + '<div class="row-actions" style="gap:8px;"><button type="button" id="import-cancel">Cancelar</button><button type="button" class="primary" id="import-confirm">Importar</button></div></div>';
+  return { ops: arch.ops, html, despues };
+}
+
+async function aplicarImportacion() {
+  const status = document.getElementById('import-status');
+  const prev = document.getElementById('import-preview');
+  const plan = importArch ? prepararImportacion(importArch) : null;   // se revisa de nuevo, con los datos de este momento
+  importArch = null;
+  prev.innerHTML = '';
+  if (!plan) return;
+  if (plan.error) { setStatus(status, plan.error, 'err'); return; }
+  descargarCopia();   // copia automática antes de cambiar nada
+  setStatus(status, 'Importando ' + plan.ops.length + ' cambios…');
+  try {
+    // Hasta 500 cambios van juntos: o se guarda todo o no se guarda nada.
+    for (let i = 0; i < plan.ops.length; i += 500) {
+      const batch = writeBatch(db);
+      plan.ops.slice(i, i + 500).forEach(o => {
+        const ref = doc(db, o.col, o.id);
+        if (o.op === 'set') batch.set(ref, o.data);
+        else if (o.op === 'update') batch.update(ref, o.data);
+        else batch.delete(ref);
+      });
+      await batch.commit();
+    }
+    clearStatusNow(status);
+    prev.innerHTML = '<div class="imp-box"><span class="imp-ok">Listo: se aplicaron ' + plan.ops.length + ' cambios.</span> Saldo pendiente: <b>' + fmt(plan.despues.ars) + '</b>. Antes se bajó una copia de seguridad de cómo estaba todo.</div>';
+  } catch (err) {
+    setStatus(status, 'No se pudo importar (' + esc((err && (err.code || err.message)) || 'error') + '). '
+      + (plan.ops.length <= 500 ? 'No se cambió nada.' : 'Puede haber quedado a medias: no reintentes sin revisar.'), 'err');
+  }
+}
+
+document.getElementById('backup-btn').addEventListener('click', () => {
+  if (currentRole !== 'editor') return;
+  descargarCopia();
+  setStatus(document.getElementById('import-status'), 'Copia de seguridad descargada.', 'ok');
+});
+document.getElementById('import-btn').addEventListener('click', () => {
+  if (currentRole !== 'editor') return;
+  const f = document.getElementById('import-file');
+  f.value = '';
+  f.click();
+});
+document.getElementById('import-file').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file || currentRole !== 'editor') return;
+  const status = document.getElementById('import-status');
+  const prev = document.getElementById('import-preview');
+  importArch = null;
+  prev.innerHTML = '';
+  let arch;
+  try { arch = JSON.parse(await file.text()); } catch (err) { setStatus(status, 'Ese archivo no se pudo leer.', 'err'); return; }
+  const plan = prepararImportacion(arch);
+  if (plan.error) { setStatus(status, plan.error, 'err'); return; }
+  clearStatusNow(status);
+  importArch = arch;
+  prev.innerHTML = plan.html;
+});
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#import-cancel')) { importArch = null; document.getElementById('import-preview').innerHTML = ''; return; }
+  const btn = e.target.closest('#import-confirm');
+  if (!btn || currentRole !== 'editor') return;
+  if (btn.dataset.armado !== '1') {
+    btn.dataset.armado = '1';
+    btn.textContent = '¿Seguro? Tocá de nuevo';
+    clearTimeout(importArmado);
+    importArmado = setTimeout(() => { btn.dataset.armado = ''; btn.textContent = 'Importar'; }, 5000);
+    return;
+  }
+  clearTimeout(importArmado);
+  aplicarImportacion();
 });
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.co-desglose');

@@ -18,6 +18,11 @@ https://jvivar1928.github.io/colpayo-40/
   (solo `publico/airbnb`, con la URL del puente).
 - Editor: constante `EDITOR_UID` en `index.html`.
 - Montos en pesos, con coma decimal.
+- Gastos, Resumen y Costeo tienen un desplegable de Año (arranca en el actual) que filtra el de Mes.
+- Copia de seguridad e importación: tarjeta en Gastos (solo editor). La copia baja todo en JSON. Importar aplica un archivo
+  `colpayo40-importacion` (operaciones set/update/delete con controles de saldo; hasta 500 cambios van en un solo lote, todo o nada)
+  y antes baja una copia sola. Lo importado del Excel viejo (ago-2023 a jul-2026) tiene ids que empiezan con `xls-` y gastos sin categoría.
+- Los datos privados (copias, archivos de importación) nunca van al repo: se le pasan al usuario como archivos.
 - Airbnb: un puente en Google Apps Script lee el calendario de Airbnb y los mails de confirmación, y le pasa a la app
   fechas, nombre del titular y cantidad de huéspedes. Reglas de Firestore, pasos y código del puente:
   `docs/setup-integraciones.md`. El código del puente vive en Apps Script; si se cambia, actualizar también esa guía.
