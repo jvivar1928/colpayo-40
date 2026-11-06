@@ -1098,29 +1098,53 @@ function esc(s) {
 }
 function esFechaISO(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v); }
 
+function limpiarEventosAirbnb(lista) {
+  return (Array.isArray(lista) ? lista : [])
+    .filter(e => e && esFechaISO(e.inicio) && esFechaISO(e.fin) && e.fin > e.inicio)
+    .map(e => {
+      const h = Number(e.huespedes);
+      return {
+        inicio: e.inicio,
+        fin: e.fin,
+        nombre: typeof e.nombre === 'string' ? e.nombre.slice(0, 80) : '',
+        huespedes: (Number.isInteger(h) && h > 0 && h <= 20) ? h : null
+      };
+    });
+}
+
+// Lo último que se leyó de Airbnb queda guardado en este dispositivo: si se corta la conexión
+// (Airbnb o Google caídos), el calendario lo sigue mostrando aunque se recargue la app.
+const AB_LOCAL = 'colpayo40-airbnb';
+
 async function cargarAirbnb(forzar) {
-  if (!airbnbUrl) { airbnbEventos = []; airbnbError = false; renderCalendario(); return; }
+  if (!airbnbUrl) {
+    airbnbEventos = []; airbnbError = false;
+    try { localStorage.removeItem(AB_LOCAL); } catch (e) {}
+    renderCalendario();
+    return;
+  }
   if (!forzar && Date.now() - airbnbUltimaCarga < 120000) return;
   airbnbUltimaCarga = Date.now();
   try {
     const res = await fetch(airbnbUrl);
     const data = await res.json();
-    const lista = Array.isArray(data && data.eventos) ? data.eventos : [];
-    airbnbEventos = lista
-      .filter(e => e && esFechaISO(e.inicio) && esFechaISO(e.fin) && e.fin > e.inicio)
-      .map(e => {
-        const h = Number(e.huespedes);
-        return {
-          inicio: e.inicio,
-          fin: e.fin,
-          nombre: typeof e.nombre === 'string' ? e.nombre.slice(0, 80) : '',
-          huespedes: (Number.isInteger(h) && h > 0 && h <= 20) ? h : null
-        };
-      });
+    if (!data || !Array.isArray(data.eventos)) throw new Error('respuesta sin eventos');
+    airbnbEventos = limpiarEventosAirbnb(data.eventos);
     airbnbActualizado = new Date();
     airbnbError = false;
+    try { localStorage.setItem(AB_LOCAL, JSON.stringify({ url: airbnbUrl, eventos: airbnbEventos, actualizado: airbnbActualizado.toISOString() })); } catch (e) {}
   } catch (e) {
     airbnbError = true;
+    if (!airbnbActualizado) {
+      try {
+        const g = JSON.parse(localStorage.getItem(AB_LOCAL) || 'null');
+        if (g && g.url === airbnbUrl) {
+          airbnbEventos = limpiarEventosAirbnb(g.eventos);
+          const f = new Date(g.actualizado);
+          airbnbActualizado = isNaN(f) ? null : f;
+        }
+      } catch (e2) {}
+    }
   }
   renderCalendario();
   renderReservas();
@@ -1150,8 +1174,11 @@ function renderAirbnb() {
     list.innerHTML = '<div class="empty">Todavía no está conectado. Pegá abajo la URL del puente de Apps Script.</div>';
     return;
   }
-  if (airbnbError) estado.textContent = 'No se pudo leer Airbnb';
-  else if (airbnbActualizado) estado.textContent = 'Actualizado ' + pad(airbnbActualizado.getHours()) + ':' + pad(airbnbActualizado.getMinutes());
+  const horaAb = airbnbActualizado ? pad(airbnbActualizado.getHours()) + ':' + pad(airbnbActualizado.getMinutes()) : '';
+  const fechaAb = (airbnbActualizado && airbnbActualizado.toDateString() !== new Date().toDateString())
+    ? pad(airbnbActualizado.getDate()) + '/' + pad(airbnbActualizado.getMonth() + 1) + ' ' : '';
+  if (airbnbError) estado.textContent = 'No se pudo leer Airbnb' + (airbnbActualizado ? ' · último dato: ' + fechaAb + horaAb : '');
+  else if (airbnbActualizado) estado.textContent = 'Actualizado ' + horaAb;
   else estado.textContent = 'Cargando…';
   const hoy = todayISO();
   abProximos = airbnbEventos.filter(ev => ev.fin >= hoy).sort((a, b) => a.inicio.localeCompare(b.inicio));
