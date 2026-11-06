@@ -18,7 +18,8 @@ https://jvivar1928.github.io/colpayo-40/
   (solo `publico/airbnb`, con la URL del puente).
 - Editor: constante `EDITOR_UID` en `index.html`.
 - Montos en pesos, con coma decimal.
-- Gastos, Resumen y Costeo tienen un desplegable de Año (arranca en el actual) que filtra el de Mes.
+- Gastos, Resumen y Costeo tienen un desplegable de Año (arranca en el actual) que filtra el de Mes. En Rendición, el Año filtra
+  las listas de conversiones y rendiciones (los saldos son siempre el total).
 - Copia de seguridad e importación: tarjeta en Gastos (solo editor). La copia baja todo en JSON. Importar aplica un archivo
   `colpayo40-importacion` (operaciones set/update/delete con controles de saldo; hasta 500 cambios van en un solo lote, todo o nada)
   y antes baja una copia sola. Lo importado del Excel viejo (ago-2023 a jul-2026) tiene ids que empiezan con `xls-` y gastos sin categoría.

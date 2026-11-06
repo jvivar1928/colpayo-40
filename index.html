@@ -437,6 +437,11 @@
       </div>
       <div class="status" id="conv-status"></div>
     </div>
+    <div class="card">
+      <label>Año</label>
+      <select id="rend-anio"></select>
+      <div class="co-nota">Filtra las listas de conversiones y de rendiciones. Los saldos en pesos y en dólares son siempre el total de todos los años.</div>
+    </div>
     <div class="card" id="conversiones-list"><div class="empty">Todavía no registraste ninguna conversión.</div></div>
 
     <div class="card" style="background:#F1E9D6;">
@@ -1098,20 +1103,40 @@ function renderRendicion() {
   const rendDolaresInput = document.getElementById('rend-dolares');
   if (rendDolaresInput && !rendDolaresInput.value) rendDolaresInput.placeholder = String(Math.round(saldoUSD));
 
+  // Año: filtra las listas de conversiones y rendiciones (los saldos de arriba son siempre el total).
+  const selAnio = document.getElementById('rend-anio');
+  const anioActual = todayISO().slice(0, 4);
+  const anios = [...new Set([anioActual, ...conversionesUSD.map(c => (c.fecha || '').slice(0, 4)), ...rendicionesUSD.map(u => (u.fecha || '').slice(0, 4))])]
+    .filter(a => /^\d{4}$/.test(a)).sort().reverse();
+  const prevAnio = selAnio.value;
+  selAnio.innerHTML = anios.map(a => '<option value="' + a + '">' + a + '</option>').join('');
+  selAnio.value = anios.includes(prevAnio) ? prevAnio : anioActual;
+  const anio = selAnio.value;
+  const delAnio = lista => lista.filter(x => (x.fecha || '').slice(0, 4) === anio);
+
   const convList = document.getElementById('conversiones-list');
+  const convAnio = delAnio(conversionesUSD);
   if (!conversionesUSD.length) {
     convList.innerHTML = '<div class="empty">Todavía no registraste ninguna conversión.</div>';
+  } else if (!convAnio.length) {
+    convList.innerHTML = '<div class="empty">No hay conversiones en ' + anio + '.</div>';
   } else {
-    const sorted = [...conversionesUSD].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    convList.innerHTML = sorted.map(c => '<div class="list-item nota"><div class="li-top"><div><div class="li-title">Conversión a dólares</div><div class="li-sub">' + formatFecha(c.fecha) + '</div></div><button class="del" data-id="' + c.id + '" data-kind="c" aria-label="Eliminar conversión"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div><div class="li-nums"><span>Pesos: <b>' + fmt(c.pesos) + '</b></span><span>Dólares: <b class="teal">' + fmtUSD(c.dolares) + '</b></span></div></div>').join('');
+    const sorted = [...convAnio].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const totPesos = convAnio.reduce((s, c) => s + (c.pesos || 0), 0);
+    const totUsd = convAnio.reduce((s, c) => s + (c.dolares || 0), 0);
+    convList.innerHTML = '<div class="co-top"><span>Conversiones de ' + anio + ' · ' + fmt(totPesos) + '</span><b>' + fmtUSD(totUsd) + '</b></div>' + sorted.map(c => '<div class="list-item nota"><div class="li-top"><div><div class="li-title">Conversión a dólares</div><div class="li-sub">' + formatFecha(c.fecha) + '</div></div><button class="del" data-id="' + c.id + '" data-kind="c" aria-label="Eliminar conversión"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div><div class="li-nums"><span>Pesos: <b>' + fmt(c.pesos) + '</b></span><span>Dólares: <b class="teal">' + fmtUSD(c.dolares) + '</b></span></div></div>').join('');
   }
 
   const rendList = document.getElementById('rendiciones-list');
+  const rendAnio = delAnio(rendicionesUSD);
   if (!rendicionesUSD.length) {
     rendList.innerHTML = '<div class="empty">Todavía no le rendiste dólares.</div>';
+  } else if (!rendAnio.length) {
+    rendList.innerHTML = '<div class="empty">No hay rendiciones en ' + anio + '.</div>';
   } else {
-    const sorted = [...rendicionesUSD].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    rendList.innerHTML = sorted.map(u => '<div class="list-item nota"><div class="li-top"><div><div class="li-title">Rendición a Lucy</div><div class="li-sub">' + formatFecha(u.fecha) + '</div></div><button class="del" data-id="' + u.id + '" data-kind="u" aria-label="Eliminar rendición"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div><div class="li-nums"><span>Dólares: <b class="teal">' + fmtUSD(u.dolares) + '</b></span></div></div>').join('');
+    const sorted = [...rendAnio].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const totUsd = rendAnio.reduce((s, u) => s + (u.dolares || 0), 0);
+    rendList.innerHTML = '<div class="co-top"><span>Rendiciones de ' + anio + ' · ' + rendAnio.length + '</span><b>' + fmtUSD(totUsd) + '</b></div>' + sorted.map(u => '<div class="list-item nota"><div class="li-top"><div><div class="li-title">Rendición a Lucy</div><div class="li-sub">' + formatFecha(u.fecha) + '</div></div><button class="del" data-id="' + u.id + '" data-kind="u" aria-label="Eliminar rendición"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div><div class="li-nums"><span>Dólares: <b class="teal">' + fmtUSD(u.dolares) + '</b></span></div></div>').join('');
   }
 }
 
@@ -1675,6 +1700,7 @@ document.getElementById('co-mes').addEventListener('change', renderCosteo);
 document.getElementById('s-anio').addEventListener('change', renderResumen);
 document.getElementById('g-anio').addEventListener('change', renderGastos);
 document.getElementById('co-anio').addEventListener('change', renderCosteo);
+document.getElementById('rend-anio').addEventListener('change', renderRendicion);
 document.getElementById('co-usd').addEventListener('input', () => {
   if (!usdManual) return;
   const v = parseMonto(document.getElementById('co-usd').value);
