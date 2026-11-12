@@ -61,17 +61,46 @@
   .li-nums b { color: #3A2E22; font-weight: 600; }
   .li-nums b.teal { color: #3F5230; }
   .li-nums b.purple { color: #6B4A2B; }
-  .del { background: none; border: none; color: #A69A85; cursor: pointer; padding: 2px 4px; height: auto; }
-  .del:hover { color: #A32D2D; background: none; }
-  .edit-btn { background: none; border: none; color: #A69A85; cursor: pointer; padding: 2px 4px; height: auto; }
-  .edit-btn:hover { color: #B5542F; background: none; }
+  .del, .edit-btn { background: none; border: none; color: #A69A85; cursor: pointer; padding: 0; width: 36px; height: 36px; justify-content: center; border-radius: 8px; flex-shrink: 0; }
+  .del svg, .edit-btn svg { width: 17px; height: 17px; }
+  .del:hover { color: #A32D2D; background: #F7EFE9; }
+  .edit-btn:hover { color: #B5542F; background: #F7EFE9; }
   .role-viewer .edit-btn { display: none !important; }
-  .del.armed { color: #A32D2D; font-size: 11px; font-weight: 600; white-space: nowrap; padding: 3px 9px; border: 1px solid #F09595; border-radius: 20px; background: #FCEBEB; }
+  .del.armed { color: #A32D2D; font-size: 11px; font-weight: 600; white-space: nowrap; width: auto; height: 28px; padding: 0 10px; border: 1px solid #F09595; border-radius: 20px; background: #FCEBEB; }
   .del.armed:hover { background: #F7C1C1; }
+  /* Filas con lápiz/tacho: los botones quedan siempre a la derecha, aunque el título sea largo. */
+  .li-top.li-top-acc { flex-wrap: nowrap; align-items: flex-start; }
+  .li-top.li-top-acc > div:first-child { min-width: 0; flex: 1; }
+  .li-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center; margin: -6px -6px -4px 0; }
+  .li-lock { flex-shrink: 0; font-size: 13px; opacity: 0.7; cursor: default; padding: 0 2px; }
+  .li-pago { margin-top: 8px; }
+  .btn-pago { height: 28px; padding: 0 12px; border-radius: 8px; border: none; background: #B5542F; color: #ffffff; font-size: 12px; font-weight: 600; gap: 5px; white-space: nowrap; box-shadow: 0 1px 3px rgba(58,46,34,0.28); }
+  .btn-pago:hover { background: #8F3F22; }
+  .btn-cuota { height: 28px; padding: 0 10px; margin-left: auto; border-radius: 8px; border: 1px solid #D9A58C; background: #FBF3EE; color: #8F3F22; font-size: 12px; font-weight: 600; gap: 5px; white-space: nowrap; }
+  .btn-cuota:hover { background: #F6E3DA; }
+  .role-editor .viewer-only { display: none !important; }
+  .co-top + .list-item { border-top: none; }
+  .buscar-wrap { position: relative; }
+  .buscar-wrap input { padding-right: 38px; }
+  .buscar-x { display: none; position: absolute; right: 2px; top: 2px; width: 32px; height: 32px; padding: 0; border: none; background: none; color: #A69A85; font-size: 20px; line-height: 1; justify-content: center; border-radius: 8px; }
+  .buscar-x:hover { background: #F1E9D6; color: #3A2E22; }
+  .buscar-wrap.con-texto .buscar-x { display: inline-flex; }
+  select:disabled, .periodo-toggle:disabled { opacity: 0.5; cursor: default; }
+  .cal-hoy-wrap { display: none; text-align: center; margin: -4px 0 10px; }
+  .cal-hoy-wrap.visible { display: block; }
+  .cal-hoy-wrap .periodo-toggle { height: 28px; padding: 0 14px; font-size: 12.5px; }
+  #r-form-abrir { display: none; }
+  @media (max-width: 600px) {
+    #r-form-card:not(.abierto) #r-form-body { display: none; }
+    #r-form-card:not(.abierto) #r-form-abrir { display: inline-flex; }
+  }
+  .aviso-conexion { display: none; position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; width: max-content; max-width: min(92vw, 520px); background: #633806; color: #ffffff; font-size: 13px; font-weight: 600; line-height: 1.35; padding: 10px 14px; border-radius: 12px; box-shadow: 0 6px 22px rgba(58,46,34,0.32); text-align: center; }
+  .aviso-conexion.visible { display: block; }
+  .aviso-conexion.ok { background: #3F5230; }
   .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 1rem; }
   .metric { background: #F1E9D6; border-radius: 10px; padding: 1rem; border-left: 3px solid #D6C9AA; }
   .metric .lbl { font-size: 12.5px; color: #766B5A; }
-  .metric .val { font-size: 21px; font-weight: 600; margin-top: 4px; }
+  .metric .val { font-size: 21px; font-weight: 600; margin-top: 4px; white-space: nowrap; }
   .metric.blue { border-left-color: #B5542F; }
   .metric.purple { border-left-color: #8A6D3A; }
   .metric.coral { border-left-color: #C99A3A; }
@@ -173,6 +202,7 @@
 </head>
 <body>
 
+<div id="aviso-conexion" class="aviso-conexion" role="status" aria-live="polite"></div>
 <div id="login-bg-a" class="login-bg"></div>
 <div id="login-bg-b" class="login-bg"></div>
 <div id="login-screen" style="display:none;">
@@ -228,6 +258,7 @@
         <div class="cal-label" id="cal-label">-</div>
         <button class="icon-btn" id="cal-next" aria-label="Mes siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></button>
       </div>
+      <div class="cal-hoy-wrap" id="cal-hoy-wrap"><button type="button" id="cal-hoy" class="periodo-toggle">Volver a hoy</button></div>
       <div class="cal-noches" id="cal-noches"></div>
       <div class="cal-grid" id="cal-grid"></div>
       <div class="cal-legend" id="cal-legend"></div>
@@ -263,20 +294,23 @@
   </div>
 
   <div class="panel" id="panel-reservas">
-    <div class="card editor-only">
-      <div id="r-form-title" style="display:none; font-size:13px; font-weight:700; color:#B5542F; margin-bottom:10px;"></div>
-      <div class="grid2">
-        <div class="field"><label>Huésped</label><input type="text" id="r-huesped" placeholder="Nombre" /></div>
-        <div class="field"><label>Entrada</label><input type="date" id="r-entrada" /></div>
-        <div class="field"><label>Salida</label><input type="date" id="r-salida" /></div>
-        <div class="field"><label>Pagó el huésped</label><div class="amount-field"><span class="currency">$</span><input type="text" inputmode="decimal" id="r-pago" placeholder="0" /></div></div>
-        <div class="field"><label>Limpieza</label><div class="amount-field"><span class="currency">$</span><input type="text" inputmode="decimal" id="r-limpieza" placeholder="0" /></div></div>
-        <div class="field"><label>Comisión</label><div class="static-field">30%</div></div>
-        <div class="field"><label>Preparación</label><label class="check-tres"><input type="checkbox" id="r-tres" /> 3 huéspedes</label></div>
-      </div>
-      <div class="row-actions">
-        <button type="button" id="r-cancel-edit" style="display:none;">Cancelar</button>
-        <button class="primary" id="r-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar reserva</button>
+    <div class="card editor-only" id="r-form-card">
+      <button type="button" class="primary" id="r-form-abrir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar reserva</button>
+      <div id="r-form-body">
+        <div id="r-form-title" style="display:none; font-size:13px; font-weight:700; color:#B5542F; margin-bottom:10px;"></div>
+        <div class="grid2">
+          <div class="field"><label>Huésped</label><input type="text" id="r-huesped" placeholder="Nombre" /></div>
+          <div class="field"><label>Entrada</label><input type="date" id="r-entrada" /></div>
+          <div class="field"><label>Salida</label><input type="date" id="r-salida" /></div>
+          <div class="field"><label>Pagó el huésped</label><div class="amount-field"><span class="currency">$</span><input type="text" inputmode="decimal" id="r-pago" placeholder="0" /></div></div>
+          <div class="field"><label>Limpieza</label><div class="amount-field"><span class="currency">$</span><input type="text" inputmode="decimal" id="r-limpieza" placeholder="0" /></div></div>
+          <div class="field"><label>Comisión</label><div class="static-field" id="r-comision-txt">30%</div></div>
+          <div class="field"><label>Preparación</label><label class="check-tres"><input type="checkbox" id="r-tres" /> 3 huéspedes</label></div>
+        </div>
+        <div class="row-actions">
+          <button type="button" id="r-cancel-edit" style="display:none;">Cancelar</button>
+          <button class="primary" id="r-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar reserva</button>
+        </div>
       </div>
       <div class="status" id="r-status"></div>
     </div>
@@ -287,6 +321,8 @@
         <button type="button" id="r-modo-anio" class="periodo-toggle">Año</button>
       </div>
       <select id="r-periodo"></select>
+      <label class="anio-label">Buscar</label>
+      <div class="buscar-wrap" id="r-buscar-wrap"><input type="text" id="r-buscar" placeholder="Nombre del huésped" autocomplete="off" enterkeyhint="search" /><button type="button" class="buscar-x" id="r-buscar-x" aria-label="Borrar la búsqueda">×</button></div>
     </div>
     <div class="card" id="r-list"><div class="empty">Cargando reservas...</div></div>
   </div>
@@ -315,6 +351,8 @@
       <select id="g-mes"></select>
       <label class="anio-label">Año</label>
       <select id="g-anio"></select>
+      <label class="anio-label">Buscar</label>
+      <div class="buscar-wrap" id="g-buscar-wrap"><input type="text" id="g-buscar" placeholder="Nota, categoría o monto" autocomplete="off" enterkeyhint="search" /><button type="button" class="buscar-x" id="g-buscar-x" aria-label="Borrar la búsqueda">×</button></div>
     </div>
     <div class="card" id="g-list"><div class="empty">Cargando gastos...</div></div>
     <div class="card">
@@ -432,6 +470,7 @@
         <div class="field"><label>Pesos convertidos</label><div class="amount-field"><span class="currency">$</span><input type="text" inputmode="decimal" id="conv-pesos" placeholder="0" /></div></div>
         <div class="field"><label>Dólares obtenidos</label><div class="amount-field usd"><span class="currency">US$</span><input type="text" inputmode="decimal" id="conv-dolares" placeholder="0" /></div></div>
       </div>
+      <div class="co-nota" id="conv-tc" style="margin-top:0;"></div>
       <div class="row-actions">
         <button class="primary" id="conv-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Convertir</button>
       </div>
@@ -542,6 +581,118 @@ function setStatus(el, html, type) {
   }
 }
 
+// ---------- Aviso de conexión ----------
+// Lo que se carga sin conexión aparece en las listas, pero recién queda guardado cuando Firebase
+// lo confirma. guardar() cuenta lo que falta confirmar para avisar que no se cierre la app.
+let escriturasPendientes = 0;
+let avisoDemora = null;
+let avisoOculta = null;
+let avisoConPendientes = false;
+function mostrarAviso(texto, ok) {
+  const el = document.getElementById('aviso-conexion');
+  el.textContent = texto;
+  el.className = 'aviso-conexion visible' + (ok ? ' ok' : '');
+}
+function actualizarAviso() {
+  const el = document.getElementById('aviso-conexion');
+  const n = escriturasPendientes;
+  const cambios = n + ' cambio' + (n === 1 ? '' : 's');
+  clearTimeout(avisoDemora);
+  clearTimeout(avisoOculta);
+  if (navigator.onLine === false) {
+    avisoConPendientes = avisoConPendientes || n > 0;
+    mostrarAviso(n
+      ? 'Sin conexión. Hay ' + cambios + ' sin guardar: no cierres la app hasta que vuelva la señal.'
+      : 'Sin conexión. Lo que cargues ahora no se guarda hasta que vuelva la señal.');
+  } else if (n > 0) {
+    const texto = 'Guardando… Falta guardar ' + cambios + ': no cierres la app.';
+    if (avisoConPendientes) mostrarAviso(texto);
+    else avisoDemora = setTimeout(() => { avisoConPendientes = true; mostrarAviso(texto); }, 4000);   // con señal, avisa solo si tarda
+  } else if (avisoConPendientes) {
+    avisoConPendientes = false;
+    mostrarAviso('Listo: quedó todo guardado.', true);
+    avisoOculta = setTimeout(() => { el.className = 'aviso-conexion'; }, 3000);
+  } else {
+    el.className = 'aviso-conexion';
+  }
+}
+function guardar(promesa) {
+  escriturasPendientes++;
+  actualizarAviso();
+  const fin = () => { escriturasPendientes = Math.max(0, escriturasPendientes - 1); actualizarAviso(); };
+  promesa.then(fin, fin);
+  return promesa;
+}
+window.addEventListener('online', actualizarAviso);
+window.addEventListener('offline', actualizarAviso);
+window.addEventListener('beforeunload', (e) => {
+  if (escriturasPendientes > 0) { e.preventDefault(); e.returnValue = ''; }
+});
+actualizarAviso();
+
+// ---------- Ayudantes de las listas ----------
+const ICO_EDITAR = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const ICO_BORRAR = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg>';
+const ICO_MAS = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+function btnBorrar(id, kind, queEs) {
+  return '<button class="del" data-id="' + id + '" data-kind="' + kind + '" aria-label="Eliminar ' + queEs + '">' + ICO_BORRAR + '</button>';
+}
+// Lápiz y tacho de una reserva o un gasto. Si su mes está cerrado, va un candado en su lugar.
+function accionesItem(id, kind, queEs, cerrado) {
+  if (cerrado) return '<span class="li-lock editor-only" title="Mes cerrado. Para cambiarlo, reabrí el mes desde Resumen.">🔒</span>';
+  return '<div class="li-actions"><button class="edit-btn" data-id="' + id + '" aria-label="Editar ' + queEs + '">' + ICO_EDITAR + '</button>' + btnBorrar(id, kind, queEs) + '</div>';
+}
+// Texto para buscar: sin mayúsculas ni acentos.
+function normTexto(s) {
+  return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+}
+function coincide(busqueda, texto) {
+  const t = normTexto(texto);
+  return normTexto(busqueda).split(' ').every(p => t.includes(p));
+}
+
+// ---------- Cuotas de la tarjeta ----------
+// En la nota del gasto la cuota va como "3/9". Devuelve { n, total, ini, largo } o null si no es una cuota.
+function cuotaDe(texto) {
+  const m = /(^|[^\d\/])(\d{1,2})\s*\/\s*(\d{1,2})(?![\d\/])/.exec(texto || '');
+  if (!m) return null;
+  const a = m[2], b = m[3];
+  if ((a.length > 1 && a[0] === '0') || (b.length > 1 && b[0] === '0')) return null;   // "04/08" es una fecha, no una cuota
+  const n = +a, total = +b;
+  if (n < 1 || n > total) return null;
+  return { n, total, ini: m.index + m[1].length, largo: a.length };
+}
+// La nota sin el número de cuota ("funda edredon #/9"): identifica la compra.
+function serieDe(texto, c) { return normTexto(texto.slice(0, c.ini) + '#' + texto.slice(c.ini + c.largo)); }
+function sumarUnMes(fechaISO) {
+  const p = (fechaISO || '').split('-');
+  if (p.length !== 3) return todayISO();
+  let y = +p[0], m = +p[1] + 1;
+  if (m > 12) { m = 1; y++; }
+  const d = Math.min(+p[2], new Date(y, m, 0).getDate());
+  return y + '-' + pad(m) + '-' + pad(d);
+}
+// Qué ofrece el botón de un gasto que tiene "/" en la nota:
+//  - si es una cuota ("3/9") y falta cargar la siguiente: la cuota siguiente, un mes después;
+//  - si es la última cuota o la siguiente ya está cargada: nada;
+//  - si la barra no es de una cuota: una copia igual con la fecha de hoy.
+function copiaDeGasto(g) {
+  const texto = g.concepto || '';
+  if (!texto.includes('/')) return null;
+  const c = cuotaDe(texto);
+  if (!c) return { tipo: 'copia', etiqueta: 'Duplicar', concepto: texto, fecha: todayISO() };
+  if (c.n >= c.total) return null;
+  const serie = serieDe(texto, c);
+  const yaEsta = gastos.some(o => {
+    if (o.id === g.id || (o.fecha || '') < (g.fecha || '')) return false;
+    const co = cuotaDe(o.concepto || '');
+    return !!co && co.n > c.n && co.total === c.total && serieDe(o.concepto, co) === serie;
+  });
+  if (yaEsta) return null;
+  const sig = c.n + 1;
+  return { tipo: 'cuota', etiqueta: 'Cuota ' + sig + '/' + c.total, concepto: texto.slice(0, c.ini) + sig + texto.slice(c.ini + c.largo), fecha: sumarUnMes(g.fecha) };
+}
+
 document.querySelectorAll('.amount-field input').forEach(inp => {
   const allowNegative = inp.id === 'g-monto';
   inp.addEventListener('input', () => {
@@ -621,17 +772,31 @@ function renderReservas() {
   populateReservaPeriodos();
   const list = document.getElementById('r-list');
   const periodo = document.getElementById('r-periodo').value;
-  const filtradas = periodo
-    ? reservas.filter(r => getMesesDeReserva(r).some(mk => rModoPeriodo === 'mes' ? mk === periodo : mk.slice(0, 4) === periodo))
-    : [];
+  // Con texto en el buscador se busca en todas las reservas y el período no se usa.
+  const busqueda = document.getElementById('r-buscar').value.trim();
+  ['r-periodo', 'r-modo-mes', 'r-modo-anio'].forEach(id => { document.getElementById(id).disabled = !!busqueda; });
+  const filtradas = busqueda
+    ? reservas.filter(r => coincide(busqueda, [r.huesped, formatFecha(r.entrada), formatFecha(r.salida)].join(' ')))
+    : periodo
+      ? reservas.filter(r => getMesesDeReserva(r).some(mk => rModoPeriodo === 'mes' ? mk === periodo : mk.slice(0, 4) === periodo))
+      : [];
   if (!filtradas.length) {
-    list.innerHTML = '<div class="empty">' + (reservas.length ? 'No hay estadías en ese período.' : 'Todavía no cargaste ninguna reserva.') + '</div>';
+    list.innerHTML = '<div class="empty">' + (busqueda ? 'No encontré reservas con "' + esc(busqueda) + '".'
+      : (reservas.length ? 'No hay estadías en ese período.' : 'Todavía no cargaste ninguna reserva.')) + '</div>';
     return;
   }
   const sorted = [...filtradas].sort((a, b) => (b.entrada || '').localeCompare(a.entrada || ''));
-  list.innerHTML = sorted.map(r => {
+  const encabezado = busqueda
+    ? '<div class="co-top"><span>Búsqueda en todas las reservas</span><b>' + sorted.length + '</b></div>'
+    : '';
+  list.innerHTML = encabezado + sorted.map(r => {
     const { base, comision, neto } = calcReserva(r);
-    return '<div class="list-item res"><div class="li-top"><div><div class="li-title">' + esc(r.huesped || 'Sin nombre') + ((r.pago || esImportada(r)) ? '' : '<span class="cal-chip ab-chip-falta chip-chico">Falta el pago</span>') + '</div><div class="li-sub">' + formatFecha(r.entrada) + ' al ' + formatFecha(r.salida) + '</div></div><div style="display:flex; gap:2px;"><button class="edit-btn" data-id="' + r.id + '" aria-label="Editar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="del" data-id="' + r.id + '" data-kind="r" aria-label="Eliminar reserva"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div></div><div class="li-nums"><span>Pagó: <b>' + fmt(r.pago) + '</b></span><span>Limpieza: <b>' + fmt(r.limpieza) + '</b></span><span>Base: <b>' + fmt(base) + '</b></span><span>Comisión (' + r.comisionPct + '%): <b class="purple">' + fmt(comision) + '</b></span><span>Neto Lucy: <b class="teal">' + fmt(neto) + '</b></span></div></div>';
+    const cerrado = mesEstaCerrado(monthKey(r.entrada));
+    const sinPago = !r.pago && !esImportada(r);
+    // Sin pago: el editor ve el botón "Cargar pago"; en modo visión (o con el mes cerrado) va solo el aviso.
+    const chipPago = sinPago ? '<span class="cal-chip ab-chip-falta chip-chico' + (cerrado ? '' : ' viewer-only') + '">Pago sin cargar</span>' : '';
+    const btnPago = (sinPago && !cerrado) ? '<div class="li-pago editor-only"><button type="button" class="btn-pago" data-id="' + r.id + '">' + ICO_MAS + 'Cargar pago</button></div>' : '';
+    return '<div class="list-item res"><div class="li-top li-top-acc"><div><div class="li-title">' + esc(r.huesped || 'Sin nombre') + chipPago + '</div><div class="li-sub">' + formatFecha(r.entrada) + ' al ' + formatFecha(r.salida) + '</div></div>' + accionesItem(r.id, 'r', 'reserva', cerrado) + '</div>' + btnPago + '<div class="li-nums"><span>Pagó: <b>' + fmt(r.pago) + '</b></span><span>Limpieza: <b>' + fmt(r.limpieza) + '</b></span><span>Base: <b>' + fmt(base) + '</b></span><span>Comisión (' + r.comisionPct + '%): <b class="purple">' + fmt(comision) + '</b></span><span>Neto Lucy: <b class="teal">' + fmt(neto) + '</b></span></div></div>';
   }).join('');
 }
 
@@ -685,14 +850,30 @@ function renderGastos() {
   populateCategorias();
   const list = document.getElementById('g-list');
   const mes = document.getElementById('g-mes').value;
-  const delMes = gastos.filter(g => monthKey(g.fecha) === mes);
-  if (!delMes.length) { list.innerHTML = '<div class="empty">' + (gastos.length ? 'Sin gastos ese mes.' : 'Todavía no cargaste ningún gasto.') + '</div>'; return; }
-  const sorted = [...delMes].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-  list.innerHTML = sorted.map(g => {
-    const catChip = (g.categoria && g.categoria !== 'Otro') ? '<span class="cal-chip" style="background:#F1E9D6;color:#766B5A;">' + g.categoria + '</span>' : '';
-    const notaTxt = g.concepto ? '<span class="li-title">' + g.concepto + '</span>' : '';
+  // Con texto en el buscador se busca en todos los gastos y el mes no se usa.
+  const busqueda = document.getElementById('g-buscar').value.trim();
+  ['g-mes', 'g-anio'].forEach(id => { document.getElementById(id).disabled = !!busqueda; });
+  const lista = busqueda
+    ? gastos.filter(g => coincide(busqueda, [g.concepto, g.categoria, formatFecha(g.fecha), fmt(g.monto), montoAInput(g.monto), String(g.monto == null ? '' : g.monto)].join(' ')))
+    : gastos.filter(g => monthKey(g.fecha) === mes);
+  if (!lista.length) {
+    list.innerHTML = '<div class="empty">' + (busqueda ? 'No encontré gastos con "' + esc(busqueda) + '".'
+      : (gastos.length ? 'Sin gastos ese mes.' : 'Todavía no cargaste ningún gasto.')) + '</div>';
+    return;
+  }
+  const sorted = [...lista].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const total = lista.reduce((s, g) => s + (g.monto || 0), 0);
+  const cuantos = lista.length + ' gasto' + (lista.length === 1 ? '' : 's');
+  const encabezado = '<div class="co-top"><span>' + (busqueda ? 'Búsqueda en todos los gastos' : 'Total ' + formatMes(mes)) + ' · ' + cuantos + '</span><b>' + fmt(total) + '</b></div>';
+  list.innerHTML = encabezado + sorted.map(g => {
+    const cerrado = mesEstaCerrado(monthKey(g.fecha));
+    const catChip = (g.categoria && g.categoria !== 'Otro') ? '<span class="cal-chip" style="background:#F1E9D6;color:#766B5A;">' + esc(g.categoria) + '</span>' : '';
+    const notaTxt = g.concepto ? '<span class="li-title">' + esc(g.concepto) + '</span>' : '';
     const headerHtml = (catChip || notaTxt) ? '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:2px;">' + catChip + notaTxt + '</div>' : '';
-    return '<div class="list-item gas"><div class="li-top"><div>' + headerHtml + '<div class="li-sub">' + formatFecha(g.fecha) + '</div></div><div style="display:flex; gap:2px;"><button class="edit-btn" data-id="' + g.id + '" aria-label="Editar gasto"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="del" data-id="' + g.id + '" data-kind="g" aria-label="Eliminar gasto"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div></div><div class="li-nums"><span>Monto: <b>' + fmt(g.monto) + '</b></span></div></div>';
+    // Gastos con "/" en la nota (cuotas de la tarjeta): botón para cargar la cuota siguiente.
+    const copia = copiaDeGasto(g);
+    const btnCopia = copia ? '<button type="button" class="btn-cuota editor-only" data-id="' + g.id + '">' + ICO_MAS + esc(copia.etiqueta) + '</button>' : '';
+    return '<div class="list-item gas"><div class="li-top li-top-acc"><div>' + headerHtml + '<div class="li-sub">' + formatFecha(g.fecha) + '</div></div>' + accionesItem(g.id, 'g', 'gasto', cerrado) + '</div><div class="li-nums" style="align-items:center;"><span>Monto: <b>' + fmt(g.monto) + '</b></span>' + btnCopia + '</div></div>';
   }).join('');
 }
 
@@ -787,6 +968,17 @@ function populateMonths() {
     m => formatMes(m) + (mesEstaCerrado(m) ? ' 🔒' : ''), 'Sin datos todavía');
 }
 
+// Achica el número de cada tarjeta de Resumen hasta que entre (los montos largos se salían).
+function ajustarMetricas() {
+  document.querySelectorAll('#panel-resumen .metric .val').forEach(el => {
+    el.style.fontSize = '';
+    if (!el.clientWidth) return;   // la pestaña no está a la vista
+    let px = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > el.clientWidth && px > 12) { px -= 1; el.style.fontSize = px + 'px'; }
+  });
+}
+window.addEventListener('resize', ajustarMetricas);
+
 function renderResumen() {
   populateMonths();
   const mes = document.getElementById('s-mes').value;
@@ -808,6 +1000,7 @@ function renderResumen() {
   document.getElementById('s-lucy-gastos').textContent = fmt(-gastosMes);
   document.getElementById('s-lucy-estadia').textContent = fmt(estadiaMes);
   document.getElementById('s-lucy-limpieza').textContent = fmt(limpiezaMes);
+  ajustarMetricas();
 
   const badge = document.getElementById('mes-cerrado-badge');
   const btn = document.getElementById('cerrar-mes-btn');
@@ -1097,11 +1290,12 @@ function renderRendicion() {
     saldoUSD < 0 ? 'Le rendiste más dólares de los convertidos.' :
     'Todo rendido.';
 
+  // De ejemplo se sugiere el saldo; si es negativo no hay nada para convertir o rendir.
   const convPesosInput = document.getElementById('conv-pesos');
-  if (convPesosInput && !convPesosInput.value) convPesosInput.placeholder = String(Math.round(saldoARS));
+  if (convPesosInput && !convPesosInput.value) convPesosInput.placeholder = String(Math.max(0, Math.round(saldoARS)));
 
   const rendDolaresInput = document.getElementById('rend-dolares');
-  if (rendDolaresInput && !rendDolaresInput.value) rendDolaresInput.placeholder = String(Math.round(saldoUSD));
+  if (rendDolaresInput && !rendDolaresInput.value) rendDolaresInput.placeholder = String(Math.max(0, Math.round(saldoUSD)));
 
   // Año: filtra las listas de conversiones y rendiciones (los saldos de arriba son siempre el total).
   const selAnio = document.getElementById('rend-anio');
@@ -1124,7 +1318,7 @@ function renderRendicion() {
     const sorted = [...convAnio].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
     const totPesos = convAnio.reduce((s, c) => s + (c.pesos || 0), 0);
     const totUsd = convAnio.reduce((s, c) => s + (c.dolares || 0), 0);
-    convList.innerHTML = '<div class="co-top"><span>Conversiones de ' + anio + ' · ' + fmt(totPesos) + '</span><b>' + fmtUSD(totUsd) + '</b></div>' + sorted.map(c => '<div class="list-item nota"><div class="li-top"><div><div class="li-title">Conversión a dólares</div><div class="li-sub">' + formatFecha(c.fecha) + '</div></div><button class="del" data-id="' + c.id + '" data-kind="c" aria-label="Eliminar conversión"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div><div class="li-nums"><span>Pesos: <b>' + fmt(c.pesos) + '</b></span><span>Dólares: <b class="teal">' + fmtUSD(c.dolares) + '</b></span></div></div>').join('');
+    convList.innerHTML = '<div class="co-top"><span>Conversiones de ' + anio + ' · ' + fmt(totPesos) + '</span><b>' + fmtUSD(totUsd) + '</b></div>' + sorted.map(c => '<div class="list-item nota"><div class="li-top li-top-acc"><div><div class="li-title">Conversión a dólares</div><div class="li-sub">' + formatFecha(c.fecha) + '</div></div><div class="li-actions">' + btnBorrar(c.id, 'c', 'conversión') + '</div></div><div class="li-nums"><span>Pesos: <b>' + fmt(c.pesos) + '</b></span><span>Dólares: <b class="teal">' + fmtUSD(c.dolares) + '</b></span><span>Tipo de cambio: <b>' + (c.dolares ? fmt(c.pesos / c.dolares) : '—') + '</b></span></div></div>').join('');
   }
 
   const rendList = document.getElementById('rendiciones-list');
@@ -1136,7 +1330,7 @@ function renderRendicion() {
   } else {
     const sorted = [...rendAnio].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
     const totUsd = rendAnio.reduce((s, u) => s + (u.dolares || 0), 0);
-    rendList.innerHTML = '<div class="co-top"><span>Rendiciones de ' + anio + ' · ' + rendAnio.length + '</span><b>' + fmtUSD(totUsd) + '</b></div>' + sorted.map(u => '<div class="list-item nota"><div class="li-top"><div><div class="li-title">Rendición a Lucy</div><div class="li-sub">' + formatFecha(u.fecha) + '</div></div><button class="del" data-id="' + u.id + '" data-kind="u" aria-label="Eliminar rendición"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div><div class="li-nums"><span>Dólares: <b class="teal">' + fmtUSD(u.dolares) + '</b></span></div></div>').join('');
+    rendList.innerHTML = '<div class="co-top"><span>Rendiciones de ' + anio + ' · ' + rendAnio.length + '</span><b>' + fmtUSD(totUsd) + '</b></div>' + sorted.map(u => '<div class="list-item nota"><div class="li-top li-top-acc"><div><div class="li-title">Rendición a Lucy</div><div class="li-sub">' + formatFecha(u.fecha) + '</div></div><div class="li-actions">' + btnBorrar(u.id, 'u', 'rendición') + '</div></div><div class="li-nums"><span>Dólares: <b class="teal">' + fmtUSD(u.dolares) + '</b></span></div></div>').join('');
   }
 }
 
@@ -1246,9 +1440,14 @@ function renderAirbnb() {
   list.innerHTML = abProximos.map((ev, i) => {
     const r = abReserva(ev);
     const n = nochesEntre(ev.inicio, ev.fin);
+    // Cargada pero sin pago: el editor ve el botón "Cargar pago"; en modo visión (o con el mes cerrado), solo el aviso.
+    const cerradoR = !!r && mesEstaCerrado(monthKey(r.entrada));
+    const pagoHtml = (!r || r.pago) ? ''
+      : '<span class="cal-chip ab-chip-falta' + (cerradoR ? '' : ' viewer-only') + '">Pago sin cargar</span>'
+        + (cerradoR ? '' : '<button type="button" class="btn-pago editor-only" data-id="' + r.id + '">' + ICO_MAS + 'Cargar pago</button>');
     const estadoHtml = r
-      ? '<div style="display:flex; gap:6px; align-items:center;"><span class="cal-chip ab-chip-ok">Cargada</span>' + (r.pago ? '' : '<span class="cal-chip ab-chip-falta">Sin pago</span>') + '</div>'
-      : '<div style="display:flex; gap:6px; align-items:center;"><span class="cal-chip ab-chip-falta">Falta cargar</span><button type="button" class="editor-only ab-cargar" data-i="' + i + '" style="height:28px; padding:0 10px; font-size:12px;">Cargar</button></div>';
+      ? '<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"><span class="cal-chip ab-chip-ok">Cargada</span>' + pagoHtml + '</div>'
+      :'<div style="display:flex; gap:6px; align-items:center;"><span class="cal-chip ab-chip-falta">Falta cargar</span><button type="button" class="editor-only ab-cargar" data-i="' + i + '" style="height:28px; padding:0 10px; font-size:12px;">Cargar</button></div>';
     return '<div class="list-item res" style="border-left-color:' + (r ? '#5C7A4A' : '#B5542F') + ';"><div class="li-top"><div>'
       + '<div class="li-title">' + esc(ev.nombre || 'Huésped de Airbnb') + '</div>'
       + '<div class="li-sub">' + formatFecha(ev.inicio) + ' al ' + formatFecha(ev.fin) + ' · ' + n + ' noche' + (n === 1 ? '' : 's')
@@ -1263,6 +1462,7 @@ function renderCalendario() {
   const legend = document.getElementById('cal-legend');
   const y = calState.year, m = calState.month;
   label.textContent = MESES[m] + ' ' + y;
+  document.getElementById('cal-hoy-wrap').classList.toggle('visible', !(y === today.getFullYear() && m === today.getMonth()));
   document.getElementById('cal-noches').textContent = textoNoches(nochesReservadasMes(y + '-' + pad(m + 1)));
   const first = new Date(y, m, 1).getDay();
   const total = new Date(y, m + 1, 0).getDate();
@@ -1334,7 +1534,7 @@ function renderNotas() {
   const prefix = y + '-' + pad(m + 1);
   const delMes = notas.filter(n => (n.fecha || '').slice(0, 7) === prefix).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
   if (!delMes.length) { list.innerHTML = '<div class="empty">Sin notas este mes.</div>'; return; }
-  list.innerHTML = delMes.map(n => '<div class="list-item nota"><div class="li-top"><div><div class="li-title">' + n.texto + '</div><div class="li-sub">' + formatFecha(n.fecha) + '</div></div><button class="del" data-id="' + n.id + '" data-kind="n" aria-label="Eliminar nota"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3"/></svg></button></div></div>').join('');
+  list.innerHTML = delMes.map(n => '<div class="list-item nota"><div class="li-top li-top-acc"><div><div class="li-title">' + n.texto + '</div><div class="li-sub">' + formatFecha(n.fecha) + '</div></div><div class="li-actions">' + btnBorrar(n.id, 'n', 'nota') + '</div></div></div>').join('');
 }
 
 function clearStatusNow(el) {
@@ -1357,10 +1557,22 @@ function resetReservaForm() {
   document.getElementById('r-add').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar reserva';
   document.getElementById('r-cancel-edit').style.display = 'none';
   document.getElementById('r-form-title').style.display = 'none';
+  document.getElementById('r-comision-txt').textContent = '30%';
+  document.getElementById('r-form-card').classList.remove('abierto');   // en el celu el formulario vuelve a quedar plegado
 }
 
-function startEditReserva(r) {
+// Aviso de mes cerrado: se lleva a la vista, porque el formulario puede estar lejos de donde se tocó.
+function avisarMesCerrado(status, queEs, mes) {
+  setStatus(status, queEs + ' es de ' + formatMes(mes) + ', que está cerrado. Para cambiarlo, reabrí el mes desde Resumen.', 'err');
+  status.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// focoId: campo donde queda el cursor ("Cargar pago" lo deja en lo que pagó el huésped).
+function startEditReserva(r, focoId) {
+  if (mesEstaCerrado(monthKey(r.entrada))) { avisarMesCerrado(document.getElementById('r-status'), 'Esa reserva', monthKey(r.entrada)); return; }
   editingReservaId = r.id;
+  document.getElementById('r-form-card').classList.add('abierto');
+  document.getElementById('r-comision-txt').textContent = (typeof r.comisionPct === 'number' ? r.comisionPct : 30) + '%';
   document.getElementById('r-huesped').value = r.huesped || '';
   document.getElementById('r-entrada').value = r.entrada || '';
   document.getElementById('r-salida').value = r.salida || '';
@@ -1374,7 +1586,9 @@ function startEditReserva(r) {
   const title = document.getElementById('r-form-title');
   title.textContent = 'Editando la reserva de ' + (r.huesped || 'sin nombre');
   title.style.display = 'block';
-  document.getElementById('r-huesped').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const foco = document.getElementById(focoId || 'r-huesped');
+  if (focoId) foco.focus({ preventScroll: true });
+  foco.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 let editingGastoId = null;
 
@@ -1399,6 +1613,7 @@ function resetGastoForm() {
 }
 
 function startEditGasto(g) {
+  if (mesEstaCerrado(monthKey(g.fecha))) { avisarMesCerrado(document.getElementById('g-status'), 'Ese gasto', monthKey(g.fecha)); return; }
   editingGastoId = g.id;
   document.getElementById('g-fecha').value = g.fecha || '';
   document.getElementById('g-concepto').value = g.concepto || '';
@@ -1421,7 +1636,9 @@ function resetNotaForm() {
   clearStatusNow(document.getElementById('n-status'));
 }
 function resetRendicionForm() {
-  ['conv-fecha', 'conv-pesos', 'conv-dolares', 'rend-fecha', 'rend-dolares'].forEach(id => { document.getElementById(id).value = ''; });
+  ['conv-pesos', 'conv-dolares', 'rend-dolares'].forEach(id => { document.getElementById(id).value = ''; });
+  ['conv-fecha', 'rend-fecha'].forEach(id => { document.getElementById(id).value = todayISO(); });
+  document.getElementById('conv-tc').textContent = '';
   clearStatusNow(document.getElementById('conv-status'));
   clearStatusNow(document.getElementById('rend-status'));
 }
@@ -1431,8 +1648,8 @@ document.querySelectorAll('.tab').forEach(tab => {
     const prevTab = document.querySelector('.tab.active');
     const leaving = prevTab ? prevTab.dataset.tab : null;
     if (leaving && leaving !== tab.dataset.tab) {
-      if (leaving === 'reservas') resetReservaForm();
-      if (leaving === 'gastos') resetGastoForm();
+      if (leaving === 'reservas') { resetReservaForm(); limpiarBuscadorReservas(); }
+      if (leaving === 'gastos') { resetGastoForm(); limpiarBuscadorGastos(); }
       if (leaving === 'calendario') resetNotaForm();
       if (leaving === 'rendicion') resetRendicionForm();
     }
@@ -1455,6 +1672,10 @@ document.getElementById('cal-prev').addEventListener('click', () => {
 document.getElementById('cal-next').addEventListener('click', () => {
   calState.month++;
   if (calState.month > 11) { calState.month = 0; calState.year++; }
+  renderCalendario();
+});
+document.getElementById('cal-hoy').addEventListener('click', () => {
+  calState = { year: today.getFullYear(), month: today.getMonth() };
   renderCalendario();
 });
 document.getElementById('cal-grid').addEventListener('click', (e) => {
@@ -1480,7 +1701,9 @@ document.getElementById('r-add').addEventListener('click', async () => {
   const pago = parseMonto(elPago.value);
   const limpieza = parseMonto(document.getElementById('r-limpieza').value);
   const tresHuespedes = document.getElementById('r-tres').checked;
-  const comisionPct = 30;
+  // Al editar se conserva la comisión que ya tenía la reserva (las importadas del Excel no son todas del 30%).
+  const original = editingReservaId ? reservas.find(x => x.id === editingReservaId) : null;
+  const comisionPct = (original && typeof original.comisionPct === 'number') ? original.comisionPct : 30;
   [elHuesped, elEntrada, elSalida, elPago].forEach(el => el.classList.remove('invalid'));
   const faltantes = [];
   if (!huesped) { elHuesped.classList.add('invalid'); faltantes.push('el nombre del huésped'); }
@@ -1492,6 +1715,8 @@ document.getElementById('r-add').addEventListener('click', async () => {
     setStatus(status, 'La salida no puede ser antes que la entrada.', 'err');
     return;
   }
+  // Una reserva de un mes cerrado no se toca, tampoco para pasarla a otro mes.
+  if (original && mesEstaCerrado(monthKey(original.entrada))) { avisarMesCerrado(status, 'Esa reserva', monthKey(original.entrada)); return; }
   if (mesEstaCerrado(monthKey(entrada))) {
     elEntrada.classList.add('invalid');
     setStatus(status, 'El mes de ' + formatMes(monthKey(entrada)) + ' ya está cerrado. No se pueden agregar más reservas ahí.', 'err');
@@ -1508,10 +1733,10 @@ document.getElementById('r-add').addEventListener('click', async () => {
   setStatus(status, 'Guardando...');
   try {
     if (idEnEdicion) {
-      await updateDoc(doc(db, 'reservas', idEnEdicion), { huesped, entrada, salida, pago, limpieza, comisionPct, tresHuespedes });
+      await guardar(updateDoc(doc(db, 'reservas', idEnEdicion), { huesped, entrada, salida, pago, limpieza, comisionPct, tresHuespedes }));
       setStatus(status, 'Reserva actualizada.', 'ok');
     } else {
-      await addDoc(reservasCol, { huesped, entrada, salida, pago, limpieza, comisionPct, tresHuespedes });
+      await guardar(addDoc(reservasCol, { huesped, entrada, salida, pago, limpieza, comisionPct, tresHuespedes }));
       setStatus(status, 'Reserva guardada.', 'ok');
     }
   } catch (e) {
@@ -1544,6 +1769,9 @@ document.getElementById('g-add').addEventListener('click', async () => {
     categoria = nuevaInput.value.trim();
     if (!categoria) { setStatus(status, 'Escribí un nombre para la nueva categoría.', 'err'); nuevaInput.focus(); return; }
   }
+  // Un gasto de un mes cerrado no se toca, tampoco para pasarlo a otro mes.
+  const original = editingGastoId ? gastos.find(x => x.id === editingGastoId) : null;
+  if (original && mesEstaCerrado(monthKey(original.fecha))) { avisarMesCerrado(status, 'Ese gasto', monthKey(original.fecha)); return; }
   if (mesEstaCerrado(monthKey(fecha))) {
     setStatus(status, 'El mes de ' + formatMes(monthKey(fecha)) + ' ya está cerrado. No se pueden agregar más gastos ahí.', 'err');
     return;
@@ -1553,10 +1781,10 @@ document.getElementById('g-add').addEventListener('click', async () => {
   setStatus(status, 'Guardando...');
   try {
     if (idEnEdicion) {
-      await updateDoc(doc(db, 'gastos', idEnEdicion), { fecha, concepto, monto, categoria });
+      await guardar(updateDoc(doc(db, 'gastos', idEnEdicion), { fecha, concepto, monto, categoria }));
       setStatus(status, 'Gasto actualizado.', 'ok');
     } else {
-      await addDoc(gastosCol, { fecha, concepto, monto, categoria });
+      await guardar(addDoc(gastosCol, { fecha, concepto, monto, categoria }));
       setStatus(status, 'Gasto guardado.', 'ok');
     }
   } catch (e) {
@@ -1582,6 +1810,67 @@ document.addEventListener('click', (e) => {
   if (g) startEditGasto(g);
 });
 
+// "Cargar pago" (en Reservas y en la tarjeta de Airbnb): abre la reserva lista para escribir lo que pagó el huésped.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-pago');
+  if (!btn || currentRole !== 'editor') return;
+  const r = reservas.find(x => x.id === btn.dataset.id);
+  if (!r) return;
+  const tabReservas = document.querySelector('.tab[data-tab="reservas"]');
+  if (!tabReservas.classList.contains('active')) tabReservas.click();
+  startEditReserva(r, 'r-pago');
+});
+// En el celu el formulario de reservas arranca plegado detrás de este botón.
+document.getElementById('r-form-abrir').addEventListener('click', () => {
+  document.getElementById('r-form-card').classList.add('abierto');
+  document.getElementById('r-cancel-edit').style.display = 'inline-flex';
+  document.getElementById('r-huesped').focus();
+});
+
+// Botón de los gastos con "/" en la nota: deja el formulario listo con la cuota siguiente (o una copia).
+// No guarda nada: hay que revisar y tocar "Agregar gasto".
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-cuota');
+  if (!btn || currentRole !== 'editor') return;
+  const g = gastos.find(x => x.id === btn.dataset.id);
+  const copia = g ? copiaDeGasto(g) : null;
+  if (!copia) return;
+  resetGastoForm();
+  populateCategorias();
+  // Si la fecha que tocaría cae en un mes cerrado, va la de hoy.
+  document.getElementById('g-fecha').value = mesEstaCerrado(monthKey(copia.fecha)) ? todayISO() : copia.fecha;
+  document.getElementById('g-concepto').value = copia.concepto;
+  document.getElementById('g-monto').value = g.monto ? montoAInput(g.monto) : '';
+  document.getElementById('g-categoria').value = g.categoria || '';
+  document.getElementById('g-cancel-edit').style.display = 'inline-flex';
+  const title = document.getElementById('g-form-title');
+  title.textContent = (copia.tipo === 'cuota' ? 'Cuota nueva' : 'Copia') + ' de "' + (g.concepto || '') + '"';
+  title.style.display = 'block';
+  setStatus(document.getElementById('g-status'), 'Revisá la fecha y el monto, y tocá "Agregar gasto".');
+  document.getElementById('g-concepto').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+// Buscadores de Reservas y Gastos. Devuelve la función que borra la búsqueda (se usa al salir de la pestaña).
+function prepararBuscador(pref, render) {
+  const inp = document.getElementById(pref + '-buscar');
+  const wrap = document.getElementById(pref + '-buscar-wrap');
+  const refrescar = () => { wrap.classList.toggle('con-texto', !!inp.value); render(); };
+  inp.addEventListener('input', refrescar);
+  document.getElementById(pref + '-buscar-x').addEventListener('click', () => { inp.value = ''; refrescar(); inp.focus(); });
+  return () => { if (inp.value) { inp.value = ''; refrescar(); } };
+}
+const limpiarBuscadorReservas = prepararBuscador('r', renderReservas);
+const limpiarBuscadorGastos = prepararBuscador('g', renderGastos);
+
+// Tipo de cambio de la conversión que se está escribiendo.
+['conv-pesos', 'conv-dolares'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const pesos = parseMonto(document.getElementById('conv-pesos').value);
+    const dolares = parseMonto(document.getElementById('conv-dolares').value);
+    document.getElementById('conv-tc').textContent = (pesos > 0 && dolares > 0) ? 'Tipo de cambio: ' + fmt(pesos / dolares) + ' por dólar.' : '';
+  });
+});
+
 
 document.getElementById('conv-add').addEventListener('click', async () => {
   if (currentRole !== 'editor') return;
@@ -1592,10 +1881,11 @@ document.getElementById('conv-add').addEventListener('click', async () => {
   const pesos = parseMonto(elPesos.value);
   const dolares = parseMonto(elDolares.value);
   if (!fecha || !pesos || !dolares) { setStatus(status, 'Falta la fecha, los pesos o los dólares.', 'err'); return; }
-  document.getElementById('conv-fecha').value = ''; elPesos.value = ''; elDolares.value = '';
+  document.getElementById('conv-fecha').value = todayISO(); elPesos.value = ''; elDolares.value = '';
+  document.getElementById('conv-tc').textContent = '';
   setStatus(status, 'Guardando...');
   try {
-    await addDoc(conversionesUSDCol, { fecha, pesos, dolares });
+    await guardar(addDoc(conversionesUSDCol, { fecha, pesos, dolares }));
     setStatus(status, 'Conversión registrada.', 'ok');
   } catch (e) {
     setStatus(status, 'No se pudo guardar. Probá de nuevo.', 'err');
@@ -1609,10 +1899,10 @@ document.getElementById('rend-add').addEventListener('click', async () => {
   const elDolares = document.getElementById('rend-dolares');
   const dolares = parseMonto(elDolares.value);
   if (!fecha || !dolares) { setStatus(status, 'Falta la fecha o los dólares entregados.', 'err'); return; }
-  document.getElementById('rend-fecha').value = ''; elDolares.value = '';
+  document.getElementById('rend-fecha').value = todayISO(); elDolares.value = '';
   setStatus(status, 'Guardando...');
   try {
-    await addDoc(rendicionesUSDCol, { fecha, dolares });
+    await guardar(addDoc(rendicionesUSDCol, { fecha, dolares }));
     setStatus(status, 'Rendición registrada.', 'ok');
   } catch (e) {
     setStatus(status, 'No se pudo guardar. Probá de nuevo.', 'err');
@@ -1629,7 +1919,7 @@ document.getElementById('ab-guardar').addEventListener('click', async () => {
   }
   setStatus(status, 'Guardando...');
   try {
-    await setDoc(doc(db, 'publico', 'airbnb'), { url: url || null }, { merge: true });
+    await guardar(setDoc(doc(db, 'publico', 'airbnb'), { url: url || null }, { merge: true }));
     setStatus(status, url ? 'Conectado. Buscando reservas…' : 'Desconectado.', 'ok');
   } catch (e) {
     setStatus(status, 'No se pudo guardar. ¿Agregaste la regla de "publico" en Firestore?', 'err');
@@ -1659,7 +1949,7 @@ document.addEventListener('click', async (e) => {
   btn.disabled = true;
   setStatus(status, 'Cargando…');
   try {
-    await addDoc(reservasCol, {
+    await guardar(addDoc(reservasCol, {
       huesped: ev.nombre || 'Huésped de Airbnb',
       entrada: ev.inicio,
       salida: ev.fin,
@@ -1667,7 +1957,7 @@ document.addEventListener('click', async (e) => {
       limpieza: 0,
       comisionPct: 30,
       tresHuespedes: (ev.huespedes || 0) >= 3
-    });
+    }));
     setStatus(status, 'Listo: quedó cargada sin pago.', 'ok');
   } catch (err) {
     btn.disabled = false;
@@ -1687,7 +1977,7 @@ document.getElementById('n-add').addEventListener('click', async () => {
   document.getElementById('n-fecha').value = ''; document.getElementById('n-texto').value = '';
   setStatus(status, 'Guardando...');
   try {
-    await addDoc(notasCol, { fecha, texto });
+    await guardar(addDoc(notasCol, { fecha, texto }));
     setStatus(status, 'Nota guardada.', 'ok');
   } catch (e) {
     setStatus(status, 'No se pudo guardar. Probá de nuevo.', 'err');
@@ -1920,7 +2210,7 @@ async function aplicarImportacion() {
         else if (o.op === 'update') batch.update(ref, o.data);
         else batch.delete(ref);
       });
-      await batch.commit();
+      await guardar(batch.commit());
     }
     clearStatusNow(status);
     prev.innerHTML = '<div class="imp-box"><span class="imp-ok">Listo: se aplicaron ' + plan.ops.length + ' cambios.</span> Saldo pendiente: <b>' + fmt(plan.despues.ars) + '</b>. Antes se bajó una copia de seguridad de cómo estaba todo.</div>';
@@ -2011,7 +2301,7 @@ document.getElementById('cerrar-mes-btn').addEventListener('click', async () => 
 
   if (!cerrado) {
     try {
-      await setDoc(doc(db, 'mesesCerrados', mes), { cerrado: true, cerradoEl: today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate()) });
+      await guardar(setDoc(doc(db, 'mesesCerrados', mes), { cerrado: true, cerradoEl: today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate()) }));
       setStatus(status, 'Mes de ' + formatMes(mes) + ' cerrado. No se van a poder agregar ni borrar reservas ni gastos ahí.', 'ok');
     } catch (e) {
       setStatus(status, 'No se pudo actualizar. Probá de nuevo.', 'err');
@@ -2036,7 +2326,7 @@ document.getElementById('cerrar-mes-btn').addEventListener('click', async () => 
   cerrarMesArmedFor = null;
   if (cerrarMesArmedTimeout) { clearTimeout(cerrarMesArmedTimeout); cerrarMesArmedTimeout = null; }
   try {
-    await deleteDoc(doc(db, 'mesesCerrados', mes));
+    await guardar(deleteDoc(doc(db, 'mesesCerrados', mes)));
     setStatus(status, 'Mes reabierto.', 'ok');
   } catch (e) {
     setStatus(status, 'No se pudo actualizar. Probá de nuevo.', 'err');
@@ -2072,25 +2362,16 @@ document.addEventListener('click', async (e) => {
 
   if (kind === 'r') {
     const item = reservas.find(r => r.id === id);
-    if (item && mesEstaCerrado(monthKey(item.entrada))) {
-      setStatus(document.getElementById('r-status'), 'No se puede borrar: el mes de ' + formatMes(monthKey(item.entrada)) + ' está cerrado.', 'err');
-      return;
-    }
+    if (item && mesEstaCerrado(monthKey(item.entrada))) { avisarMesCerrado(document.getElementById('r-status'), 'Esa reserva', monthKey(item.entrada)); return; }
   }
   if (kind === 'g') {
     const item = gastos.find(g => g.id === id);
-    if (item && mesEstaCerrado(monthKey(item.fecha))) {
-      setStatus(document.getElementById('g-status'), 'No se puede borrar: el mes de ' + formatMes(monthKey(item.fecha)) + ' está cerrado.', 'err');
-      return;
-    }
+    if (item && mesEstaCerrado(monthKey(item.fecha))) { avisarMesCerrado(document.getElementById('g-status'), 'Ese gasto', monthKey(item.fecha)); return; }
   }
 
   try {
-    if (kind === 'r') await deleteDoc(doc(db, 'reservas', id));
-    else if (kind === 'n') await deleteDoc(doc(db, 'notas', id));
-    else if (kind === 'c') await deleteDoc(doc(db, 'conversionesUSD', id));
-    else if (kind === 'u') await deleteDoc(doc(db, 'rendicionesUSD', id));
-    else await deleteDoc(doc(db, 'gastos', id));
+    const coleccion = { r: 'reservas', n: 'notas', c: 'conversionesUSD', u: 'rendicionesUSD' }[kind] || 'gastos';
+    await guardar(deleteDoc(doc(db, coleccion, id)));
   } catch (e) { /* la regla de seguridad bloquea a quien no sea editor */ }
 });
 
@@ -2116,7 +2397,8 @@ function attachListeners() {
   }, () => { renderAirbnb(); });
   onSnapshot(mesesCerradosCol, snap => {
     mesesCerrados = snap.docs.map(d => ({ mes: d.id, ...d.data() }));
-    renderResumen(); renderCosteo();
+    // Las listas también dependen de los meses cerrados (candado en lugar de lápiz y tacho).
+    renderResumen(); renderCosteo(); renderReservas(); renderGastos(); renderCalendario();
   });
   onSnapshot(conversionesUSDCol, snap => {
     conversionesUSD = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2128,7 +2410,7 @@ function attachListeners() {
   });
 }
 
-document.getElementById('g-fecha').value = todayISO();
+['g-fecha', 'conv-fecha', 'rend-fecha'].forEach(id => { document.getElementById(id).value = todayISO(); });
 
 const LOGIN_PHOTOS = ['images/foto-living.jpg', 'images/foto-cocina.jpg', 'images/foto-hall.jpg', 'images/foto-dormitorio.jpg', 'images/foto-living-2.jpg', 'images/foto-cocina-2.jpg', 'images/foto-dormitorio-2.jpg'];
 let loginBgTimer = null;
