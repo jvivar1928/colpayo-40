@@ -24,6 +24,17 @@ https://jvivar1928.github.io/colpayo-40/
   `colpayo40-importacion` (operaciones set/update/delete con controles de saldo; hasta 500 cambios van en un solo lote, todo o nada)
   y antes baja una copia sola. Lo importado del Excel viejo (ago-2023 a jul-2026) tiene ids que empiezan con `xls-` y gastos sin categoría.
 - Los datos privados (copias, archivos de importación) nunca van al repo: se le pasan al usuario como archivos.
+- Meses cerrados: en reservas y gastos va un candado en lugar del lápiz y el tacho, y no se puede pasar algo de un mes cerrado
+  a otro mes (para cambiarlo hay que reabrir el mes desde Resumen).
+- Reservas sin pago (las de Airbnb se cargan así): botón "Cargar pago" para el editor; en modo visión o con el mes cerrado se
+  muestra el aviso "Pago sin cargar". Al editar una reserva se conserva su comisión (las importadas no son todas del 30%).
+- Cuotas de la tarjeta: van en la nota del gasto como "3/9". Los gastos con una barra en la nota tienen un botón que deja el
+  formulario listo con la cuota siguiente, un mes después (no aparece en la última cuota ni si la siguiente ya está cargada);
+  si la barra no es de una cuota, el botón es "Duplicar". Nunca guarda solo: hay que tocar "Agregar gasto".
+- Buscadores en Reservas y Gastos (ignoran acentos y mayúsculas; buscan en todos los meses). En el celular, el formulario de
+  Reservas arranca plegado detrás del botón "Agregar reserva".
+- Aviso de conexión: `guardar()` envuelve cada escritura a Firestore y cuenta las que faltan confirmar; el cartel de abajo avisa
+  si no hay conexión o si el guardado tarda. Toda escritura nueva tiene que pasar por `guardar()`.
 - Airbnb: un puente en Google Apps Script lee el calendario de Airbnb y los mails de confirmación, y le pasa a la app
   fechas, nombre del titular y cantidad de huéspedes. Reglas de Firestore, pasos y código del puente:
   `docs/setup-integraciones.md`. El código del puente vive en Apps Script; si se cambia, actualizar también esa guía.
